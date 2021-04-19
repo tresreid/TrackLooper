@@ -200,6 +200,16 @@ void fillTrackCandidateOutputBranches(SDL::Event& event)
                 betaIn_out = trackletsInGPU.betaIn[outerTrackletIdx];
                 betaOut_out = trackletsInGPU.betaOut[outerTrackletIdx];
             }
+            if (trackCandidateType == 3) // pT2
+            {
+                innerTrackletInnerSegmentIndex = trackletsInGPU.segmentIndices[2 * innerTrackletIdx];
+                innerTrackletOuterSegmentIndex = trackletsInGPU.segmentIndices[2 * innerTrackletIdx + 1];
+                outerTrackletOuterSegmentIndex = trackletsInGPU.segmentIndices[2 * outerTrackletIdx + 1];
+                betaIn_in = trackletsInGPU.betaIn[innerTrackletIdx];
+                betaOut_in = trackletsInGPU.betaOut[innerTrackletIdx];
+                betaIn_out = trackletsInGPU.betaIn[outerTrackletIdx];
+                betaOut_out = trackletsInGPU.betaOut[outerTrackletIdx];
+            }
 
             unsigned int innerTrackletInnerSegmentInnerMiniDoubletIndex = segmentsInGPU.mdIndices[2 * innerTrackletInnerSegmentIndex];
             unsigned int innerTrackletInnerSegmentOuterMiniDoubletIndex = segmentsInGPU.mdIndices[2 * innerTrackletInnerSegmentIndex + 1];
