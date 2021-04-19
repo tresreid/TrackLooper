@@ -337,6 +337,9 @@ void fillTrackCandidateOutputBranches(SDL::Event& event)
     SDL::miniDoublets& miniDoubletsInGPU = (*event.getMiniDoublets());
     SDL::hits& hitsInGPU = (*event.getHits());
     SDL::modules& modulesInGPU = (*event.getModules());
+#ifdef DO_QUINTUPLET
+    SDL::quintuplets& quintupletsInGPU = (*event.getQuintuplets());
+#endif
 
     // Did it match to track candidate?
     std::vector<int> sim_TC_matched(trk.sim_pt().size());
@@ -422,6 +425,19 @@ void fillTrackCandidateOutputBranches(SDL::Event& event)
                 betaOut_in = trackletsInGPU.betaOut[innerTrackletIdx];
                 betaIn_out = trackletsInGPU.betaIn[outerTrackletIdx];
                 betaOut_out = trackletsInGPU.betaOut[outerTrackletIdx];
+            }
+            if (trackCandidateType == 4) // pT2
+            {
+                unsigned int innerTripletIdx = quintupletsInGPU.tripletIndices[2 * innerTrackletIdx];
+                unsigned int outerTripletIdx = quintupletsInGPU.tripletIndices[2 * outerTrackletIdx + 1]; //inner and outerTracklet Index are the same (one T5 object)
+                //printf("%u %u %u %u\n",innerTrackletIdx,outerTrackletIdx,innerTripletIdx,outerTripletIdx);
+                innerTrackletInnerSegmentIndex = tripletsInGPU.segmentIndices[2 * innerTripletIdx];
+                innerTrackletOuterSegmentIndex = tripletsInGPU.segmentIndices[2 * innerTripletIdx + 1];
+                outerTrackletOuterSegmentIndex = tripletsInGPU.segmentIndices[2 * outerTripletIdx + 1];
+                betaIn_in = tripletsInGPU.betaIn[innerTripletIdx];
+                betaOut_in = tripletsInGPU.betaOut[innerTripletIdx];
+                betaIn_out = tripletsInGPU.betaIn[outerTripletIdx];
+                betaOut_out = tripletsInGPU.betaOut[outerTripletIdx];
             }
 
             unsigned int innerTrackletInnerSegmentInnerMiniDoubletIndex = segmentsInGPU.mdIndices[2 * innerTrackletInnerSegmentIndex];
@@ -2471,7 +2487,7 @@ void printTimingInformation(std::vector<std::vector<float>>& timing_information)
     std::cout << right;
     std::cout << "Timing summary" << std::endl;
     std::cout << "Evt     Hits         MD       LS      T4      T4x       pT4        T3       TC       T5       Total" << std::endl;
-    std::vector<float> timing_sum_information(8);
+    std::vector<float> timing_sum_information(timing_information[0].size());
     for (auto&& [ievt, timing] : iter::enumerate(timing_information))
     {
         float timing_total = 0.f;
