@@ -64,10 +64,11 @@ namespace SDL
         segments* segmentsInCPU;
         tracklets* trackletsInCPU;
         triplets* tripletsInCPU;
-        quintuplets* quintupletsInCPU;
         trackCandidates* trackCandidatesInCPU;
         modules* modulesInCPU;
         modules* modulesInCPUFull;
+        quintuplets* quintupletsInCPU;
+
         int* superbinCPU;
         int* pixelTypeCPU;
     public:
@@ -75,11 +76,7 @@ namespace SDL
         ~Event();
 
         void addHitToEvent(std::vector<float> x, std::vector<float> y, std::vector<float> z, std::vector<unsigned int> detId, std::vector<unsigned int> idxInNtuple); //call the appropriate hit function, then increment the counter here
-
-        void addPixelSegmentToEvent(std::vector<unsigned int> hitIndices0,std::vector<unsigned int> hitIndices1,std::vector<unsigned int> hitIndices2,std::vector<unsigned int> hitIndices3, std::vector<float> dPhiChange, std::vector<float> ptIn, std::vector<float> ptErr, std::vector<float> px, std::vector<float> py, std::vector<float> pz, std::vector<float> eta, std::vector<float> etaErr, std::vector<float> phi, std::vector<int> superbin,std::vector<int> pixelType);
-
-        
-
+        void addPixelSegmentToEvent(std::vector<unsigned int> hitIndices0,std::vector<unsigned int> hitIndices1,std::vector<unsigned int> hitIndices2,std::vector<unsigned int> hitIndices3, std::vector<float> dPhiChange, std::vector<float> ptIn, std::vector<float> ptErr, std::vector<float> px, std::vector<float> py, std::vector<float> pz, std::vector<float> eta, std::vector<float> etaErr, std::vector<float> phi, std::vector<int> superbin, std::vector<int> pixelType);
 
         /*functions that map the objects to the appropriate modules*/
         void addMiniDoubletsToEvent();
@@ -94,9 +91,7 @@ namespace SDL
         void addTrackletsWithAGapToEventExplicit();
         void addTripletsToEventExplicit();
         void addTrackCandidatesToEventExplicit();
-
         void addQuintupletsToEvent();
-
         void addQuintupletsToEventExplicit();
 
         void resetObjectsInModule();
@@ -109,7 +104,6 @@ namespace SDL
         void createPixelTrackletsWithMap();
         void createTrackletsWithAGapWithModuleMap();
         void createTrackCandidates();
-
         void createQuintuplets();
 
         unsigned int getNumberOfHits();
@@ -212,6 +206,7 @@ __global__ void createTrackletsWithAGapInGPU(struct SDL::modules& modulesInGPU, 
 
 
 __global__ void createTrackletsWithAGapFromInnerInnerLowerModule(struct SDL::modules& modulesInGPU, struct SDL::hits& hitsInGPU, struct SDL::miniDoublets& mdsInGPU, struct SDL::segments& segmentsInGPU, struct SDL::tracklets& trackletsInGPU, unsigned int innerInnerLowerModuleIndex, unsigned int nInnerSegments, unsigned int innerInnerLowerModuleArrayIndex);
+
 #ifndef NESTED_PARA
 #ifdef NEWGRID_Trips
 __global__ void createTripletsInGPU(struct SDL::modules& modulesInGPU, struct SDL::hits& hitsInGPU, struct SDL::miniDoublets& mdsInGPU, str\
@@ -240,6 +235,10 @@ __global__ void createTrackCandidatesInGPU(struct SDL::modules& modulesInGPU, st
 __global__ void createTrackCandidatesFromInnerInnerInnerLowerModule(struct SDL::modules& modulesInGPU, struct SDL::hits& hitsInGPU, struct SDL::miniDoublets& mdsInGPU, struct SDL::segments& segmentsInGPU, struct SDL::tracklets& trackletsInGPU, struct SDL::triplets& tripletsInGPU, struct SDL::trackCandidates& trackCandidatesInGPU, unsigned int innerInnerInnerLowerModuleArrayIndex, unsigned int nInnerTracklets, unsigned int nInnerTriplets);
 #endif
 
+#ifdef NEWGRID_T5
+__global__ void createQuintupletsInGPU(struct SDL::modules& modulesInGPU, struct SDL::hits& hitsInGPU, struct SDL::miniDoublets& mdsInGPU, struct SDL::segments& segmentsInGPU, struct SDL::triplets& tripletsInGPU, struct SDL::quintuplets& quintupletsInGPU, unsigned int* index_gpu);
+#else
 __global__ void createQuintupletsInGPU(struct SDL::modules& modulesInGPU, struct SDL::hits& hitsInGPU, struct SDL::miniDoublets& mdsInGPU, struct SDL::segments& segmentsInGPU, struct SDL::triplets& tripletsInGPU, struct SDL::quintuplets& quintupletsInGPU);
+#endif
 
 #endif
