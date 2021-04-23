@@ -426,14 +426,19 @@ void fillTrackCandidateOutputBranches(SDL::Event& event)
                 betaIn_out = trackletsInGPU.betaIn[outerTrackletIdx];
                 betaOut_out = trackletsInGPU.betaOut[outerTrackletIdx];
             }
-            if (trackCandidateType == 4) // pT2
+            if (trackCandidateType == 4) // T5
             {
+                printf("testTC %u\n",innerTrackletIdx);
+                //if(innerTrackletIdx > 31200000){continue;}
+                //if(innerTrackletIdx > 31200000){continue;}
+                if(innerTrackletIdx >= 31310128){continue;}
                 unsigned int innerTripletIdx = quintupletsInGPU.tripletIndices[2 * innerTrackletIdx];
-                unsigned int outerTripletIdx = quintupletsInGPU.tripletIndices[2 * outerTrackletIdx + 1]; //inner and outerTracklet Index are the same (one T5 object)
-                //printf("%u %u %u %u\n",innerTrackletIdx,outerTrackletIdx,innerTripletIdx,outerTripletIdx);
+                unsigned int outerTripletIdx = quintupletsInGPU.tripletIndices[2 * innerTrackletIdx + 1]; //inner and outerTracklet Index are the same (one T5 object)
+                //printf("TC %u %u %u\n",innerTrackletIdx, innerTripletIdx,outerTripletIdx);
                 innerTrackletInnerSegmentIndex = tripletsInGPU.segmentIndices[2 * innerTripletIdx];
                 innerTrackletOuterSegmentIndex = tripletsInGPU.segmentIndices[2 * innerTripletIdx + 1];
                 outerTrackletOuterSegmentIndex = tripletsInGPU.segmentIndices[2 * outerTripletIdx + 1];
+                printf("TC %u %u %u %u %u %u\n",innerTrackletIdx, innerTripletIdx,outerTripletIdx,innerTrackletInnerSegmentIndex,innerTrackletOuterSegmentIndex,outerTrackletOuterSegmentIndex);
                 betaIn_in = tripletsInGPU.betaIn[innerTripletIdx];
                 betaOut_in = tripletsInGPU.betaOut[innerTripletIdx];
                 betaIn_out = tripletsInGPU.betaIn[outerTripletIdx];
@@ -772,6 +777,7 @@ void fillQuintupletOutputBranches(SDL::Event& event)
             unsigned int innerTripletOuterSegmentIndex = tripletsInGPU.segmentIndices[2 * innerTripletIndex + 1];
             unsigned int outerTripletInnerSegmentIndex = tripletsInGPU.segmentIndices[2 * outerTripletIndex];
             unsigned int outerTripletOuterSegmentIndex = tripletsInGPU.segmentIndices[2 * outerTripletIndex + 1];
+            printf("T5 %u %u %u %u %u %u\n",quintupletIndex,innerTripletIndex,outerTripletIndex,innerTripletInnerSegmentIndex,innerTripletOuterSegmentIndex,outerTripletOuterSegmentIndex);
 
             unsigned int innerTripletInnerSegmentInnerMiniDoubletIndex = segmentsInGPU.mdIndices[2 * innerTripletInnerSegmentIndex];
 
