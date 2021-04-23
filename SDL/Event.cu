@@ -1512,7 +1512,8 @@ void SDL::Event::createTrackCandidates()
 
 #ifdef DO_QUINTUPLET //only for T5
     dim3 nThreads(32,16,1);
-    dim3 nBlocks(((nLowerModules-1) % nThreads.x == 0 ? (nLowerModules-1)/nThreads.x : (nLowerModules-1)/nThreads.x + 1),((nLowerModules-1) % nThreads.y == 0 ? (nLowerModules-1)/nThreads.y : (nLowerModules-1)/nThreads.y + 1),1);
+    //dim3 nBlocks(((nLowerModules-1) % nThreads.x == 0 ? (nLowerModules-1)/nThreads.x : (nLowerModules-1)/nThreads.x + 1),((nLowerModules-1) % nThreads.y == 0 ? (nLowerModules-1)/nThreads.y : (nLowerModules-1)/nThreads.y + 1),1);
+    dim3 nBlocks(((nLowerModules-1) % nThreads.x == 0 ? (nLowerModules-1)/nThreads.x : (nLowerModules-1)/nThreads.x + 1),((N_MAX_QUINTUPLETS_PER_MODULE-1) % nThreads.y == 0 ? (N_MAX_QUINTUPLETS_PER_MODULE-1)/nThreads.y : (N_MAX_QUINTUPLETS_PER_MODULE-1)/nThreads.y + 1),1);
 //  printf("TEST0 %d %d %d %d %d\n",nLowerModules,nBlocks.x,nBlocks.y,nThreads.x,nThreads.y);
     addT5asTrackCandidateInGPU<<<nBlocks,nThreads>>>(*modulesInGPU,*quintupletsInGPU,*trackCandidatesInGPU);
 
@@ -1521,15 +1522,15 @@ void SDL::Event::createTrackCandidates()
     {
         std::cout<<"sync failed with error : "<<cudaGetErrorString(cudaerr)<<std::endl;
     }
-    unsigned int nThreadsx = 1;
-    unsigned int nBlocksx = ( N_MAX_PIXEL_TRACK_CANDIDATES_PER_MODULE) % nThreadsx == 0 ?  N_MAX_PIXEL_TRACK_CANDIDATES_PER_MODULE/nThreadsx :  N_MAX_PIXEL_TRACK_CANDIDATES_PER_MODULE/nThreadsx + 1;
-    addpT2asTrackCandidateInGPU<<<nBlocksx,nThreadsx>>>(*modulesInGPU,*trackletsInGPU,*trackCandidatesInGPU);
-    //cudaError_t cudaerr = cudaDeviceSynchronize();
-    cudaerr = cudaDeviceSynchronize();
-    if(cudaerr != cudaSuccess)
-    {
-        std::cout<<"sync failed with error : "<<cudaGetErrorString(cudaerr)<<std::endl;
-    }
+//    unsigned int nThreadsx = 1;
+//    unsigned int nBlocksx = ( N_MAX_PIXEL_TRACK_CANDIDATES_PER_MODULE) % nThreadsx == 0 ?  N_MAX_PIXEL_TRACK_CANDIDATES_PER_MODULE/nThreadsx :  N_MAX_PIXEL_TRACK_CANDIDATES_PER_MODULE/nThreadsx + 1;
+//    addpT2asTrackCandidateInGPU<<<nBlocksx,nThreadsx>>>(*modulesInGPU,*trackletsInGPU,*trackCandidatesInGPU);
+//    //cudaError_t cudaerr = cudaDeviceSynchronize();
+//    cudaerr = cudaDeviceSynchronize();
+//    if(cudaerr != cudaSuccess)
+//    {
+//        std::cout<<"sync failed with error : "<<cudaGetErrorString(cudaerr)<<std::endl;
+//    }
 #else // not T5
 //#endif
 #ifdef NESTED_PARA
@@ -3147,13 +3148,17 @@ __global__ void addT5asTrackCandidateInGPU(struct SDL::modules& modulesInGPU,str
 {
   int innerInnerInnerLowerModuleArrayIndex = blockIdx.x * blockDim.x + threadIdx.x;
   if(innerInnerInnerLowerModuleArrayIndex >= *modulesInGPU.nLowerModules) return;
+  //unsigned int nQuints = quintupletsInGPU.nQuintuplets[modulesInGPU.lowerModuleIndices[innerInnerInnerLowerModuleArrayIndex]];
   unsigned int nQuints = quintupletsInGPU.nQuintuplets[innerInnerInnerLowerModuleArrayIndex];
   if (nQuints > N_MAX_QUINTUPLETS_PER_MODULE) {nQuints = N_MAX_QUINTUPLETS_PER_MODULE;}
+  if(innerInnerInnerLowerModuleArrayIndex==3420){printf("IIILMAI=1 %d\n",nQuints);}
   int innerObjectArrayIndex = blockIdx.y * blockDim.y + threadIdx.y;
   if(innerObjectArrayIndex >= nQuints) return;
   int innerObjectIndex = innerInnerInnerLowerModuleArrayIndex * N_MAX_QUINTUPLETS_PER_MODULE + innerObjectArrayIndex;
 
-  unsigned int trackCandidateModuleIdx = trackCandidatesInGPU.nTrackCandidates[innerInnerInnerLowerModuleArrayIndex]+1;
+//  unsigned int trackCandidateModuleIdx = trackCandidatesInGPU.nTrackCandidates[innerInnerInnerLowerModuleArrayIndex]+1;
+  unsigned int trackCandidateModuleIdx = atomicAdd(&trackCandidatesInGPU.nTrackCandidates[innerInnerInnerLowerModuleArrayIndex],1);
+  if(innerInnerInnerLowerModuleArrayIndex==3420){printf("IIILMAI=3420 %d %d %d %u\n",nQuints,innerObjectArrayIndex,innerObjectIndex, trackCandidateModuleIdx);}
 	      if(trackCandidateModuleIdx >  N_MAX_TRACK_CANDIDATES_PER_MODULE)
                 {
                     #ifdef Warnings
@@ -3172,7 +3177,6 @@ __global__ void addT5asTrackCandidateInGPU(struct SDL::modules& modulesInGPU,str
                     }
 		  else
 		    {
-  atomicAdd(&trackCandidatesInGPU.nTrackCandidates[innerInnerInnerLowerModuleArrayIndex],1);
   atomicAdd(&trackCandidatesInGPU.nTrackCandidatesT5[innerInnerInnerLowerModuleArrayIndex],1);
   unsigned int trackCandidateIdx = modulesInGPU.trackCandidateModuleIndices[innerInnerInnerLowerModuleArrayIndex] + trackCandidateModuleIdx;
 //  printf("TEST %u %u %u %u %u\n",innerInnerInnerLowerModuleArrayIndex,trackCandidateModuleIdx,trackCandidateIdx,trackCandidatesInGPU.nTrackCandidates[innerInnerInnerLowerModuleArrayIndex],trackCandidatesInGPU.nTrackCandidatesT5[innerInnerInnerLowerModuleArrayIndex]);
