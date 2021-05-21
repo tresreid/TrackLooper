@@ -431,7 +431,18 @@ __global__ void addPixelSegmentToEventKernel(unsigned int* hitIndices0,unsigned 
       unsigned int innerMDIndex = pixelModuleIndex * N_MAX_MD_PER_MODULES + 2*(tid);
       unsigned int outerMDIndex = pixelModuleIndex * N_MAX_MD_PER_MODULES + 2*(tid) +1;
       unsigned int pixelSegmentIndex = pixelModuleIndex * N_MAX_SEGMENTS_PER_MODULE + tid;
-
+#ifdef DUP_RM
+    bool dup = false;
+    for (int i=0; i<tid; i++){
+        if(abs(eta[i] - eta[tid]) > 0.3){continue;}
+        if(abs(phi[i] - phi[tid]) > 0.3){continue;}
+        //if(abs(ptIn[i] - ptIn[tid])/ptIn[tid] > 0.3){continue;}
+        float dR2 = (eta[i]-eta[tid])*(eta[i]-eta[tid]) + (phi[i]-phi[tid])*(phi[i]-phi[tid]);
+        //if(dR2 > 0.001){continue;}
+        dup = true;
+        break;
+      }
+      if(!dup){
 #ifdef CUT_VALUE_DEBUG
       addMDToMemory(mdsInGPU, hitsInGPU, modulesInGPU, hitIndices0[tid], hitIndices1[tid], pixelModuleIndex, 0,0,0,0,0,0,0,0,0,0,0,0,0,innerMDIndex);
       addMDToMemory(mdsInGPU, hitsInGPU, modulesInGPU, hitIndices2[tid], hitIndices3[tid], pixelModuleIndex, 0,0,0,0,0,0,0,0,0,0,0,0,0,outerMDIndex);
@@ -440,6 +451,17 @@ __global__ void addPixelSegmentToEventKernel(unsigned int* hitIndices0,unsigned 
       addMDToMemory(mdsInGPU, hitsInGPU, modulesInGPU, hitIndices2[tid], hitIndices3[tid], pixelModuleIndex, 0,0,0,0,0,0,0,0,0,outerMDIndex);
 #endif
       addPixelSegmentToMemory(segmentsInGPU, mdsInGPU, hitsInGPU, modulesInGPU, innerMDIndex, outerMDIndex, pixelModuleIndex, hitIndices0[tid], hitIndices2[tid], dPhiChange[tid], ptIn[tid], ptErr[tid], px[tid], py[tid], pz[tid], etaErr[tid], eta[tid], phi[tid], pixelSegmentIndex, tid, superbin[tid], pixelType[tid]);
+    }
+#else
+#ifdef CUT_VALUE_DEBUG
+      addMDToMemory(mdsInGPU, hitsInGPU, modulesInGPU, hitIndices0[tid], hitIndices1[tid], pixelModuleIndex, 0,0,0,0,0,0,0,0,0,0,0,0,0,innerMDIndex);
+      addMDToMemory(mdsInGPU, hitsInGPU, modulesInGPU, hitIndices2[tid], hitIndices3[tid], pixelModuleIndex, 0,0,0,0,0,0,0,0,0,0,0,0,0,outerMDIndex);
+#else
+      addMDToMemory(mdsInGPU, hitsInGPU, modulesInGPU, hitIndices0[tid], hitIndices1[tid], pixelModuleIndex, 0,0,0,0,0,0,0,0,0,innerMDIndex);
+      addMDToMemory(mdsInGPU, hitsInGPU, modulesInGPU, hitIndices2[tid], hitIndices3[tid], pixelModuleIndex, 0,0,0,0,0,0,0,0,0,outerMDIndex);
+#endif
+      addPixelSegmentToMemory(segmentsInGPU, mdsInGPU, hitsInGPU, modulesInGPU, innerMDIndex, outerMDIndex, pixelModuleIndex, hitIndices0[tid], hitIndices2[tid], dPhiChange[tid], ptIn[tid], ptErr[tid], px[tid], py[tid], pz[tid], etaErr[tid], eta[tid], phi[tid], pixelSegmentIndex, tid, superbin[tid], pixelType[tid]);
+#endif
     }
 }
 void SDL::Event::addPixelSegmentToEvent(std::vector<unsigned int> hitIndices0,std::vector<unsigned int> hitIndices1,std::vector<unsigned int> hitIndices2,std::vector<unsigned int> hitIndices3, std::vector<float> dPhiChange, std::vector<float> ptIn, std::vector<float> ptErr, std::vector<float> px, std::vector<float> py, std::vector<float> pz, std::vector<float> eta, std::vector<float> etaErr, std::vector<float> phi, std::vector<int> superbin, std::vector<int> pixelType)
@@ -1286,6 +1308,18 @@ void SDL::Event::createPixelTrackletsWithMap()
     superbins = segmentsInGPU->superbin;
     pixelTypes = segmentsInGPU->pixelType;
 #endif
+////////DUPs
+float* etas;
+float* phis;
+float* pts;
+    cudaMallocHost(&etas,N_MAX_PIXEL_SEGMENTS_PER_MODULE*sizeof(float));
+    cudaMallocHost(&phis,N_MAX_PIXEL_SEGMENTS_PER_MODULE*sizeof(float));
+    cudaMallocHost(&pts,N_MAX_PIXEL_SEGMENTS_PER_MODULE*sizeof(float));
+    cudaMemcpy(etas,segmentsInGPU->eta,N_MAX_PIXEL_SEGMENTS_PER_MODULE*sizeof(float),cudaMemcpyDeviceToHost);
+    cudaMemcpy(phis,segmentsInGPU->phi,N_MAX_PIXEL_SEGMENTS_PER_MODULE*sizeof(float),cudaMemcpyDeviceToHost);
+    cudaMemcpy(pts,segmentsInGPU->ptIn,N_MAX_PIXEL_SEGMENTS_PER_MODULE*sizeof(float),cudaMemcpyDeviceToHost);
+
+/////////
     unsigned int* connectedPixelSize_host;
     unsigned int* connectedPixelIndex_host;
     cudaMallocHost(&connectedPixelSize_host, nInnerSegments* sizeof(unsigned int));
@@ -1313,6 +1347,20 @@ void SDL::Event::createPixelTrackletsWithMap()
       if(superbin <0) {/*printf("bad neg %d\n",ix);*/continue;}
       if(superbin >=45000) {/*printf("bad pos %d %d %d\n",ix,superbin,pixelType);*/continue;}// skip any weird out of range values
       if(pixelType >2 || pixelType < 0){/*printf("bad pixel type %d %d\n",ix,pixelType);*/continue;}
+///////////////DUP
+    bool dup = false;
+    for (int jx=0; jx<ix; jx++){
+        if(abs(etas[ix] - etas[jx]) > 0.0003){continue;}
+        if(abs(phis[ix] - phis[jx]) > 0.0003){continue;}
+        //if(abs(pts[ix] - pts[jx])/pts[jx] > 0.3){continue;}
+        float dR2 = (etas[ix]-etas[jx])*(etas[ix]-etas[jx]) + (phis[ix]-phis[jx])*(phis[ix]-phis[jx]);
+        if(dR2 > 0.0000000001){continue;}
+        //printf("dR2: %e %f %f \n",dR2,pts[ix],pts[jx]);
+        dup = true;
+        break;
+      }
+///////////////////////
+      if(dup){continue;}
       i++;
       if(pixelType ==0){ // used pixel type to select correct size-index arrays
         connectedPixelSize_host[i]  = pixelMapping->connectedPixelsSizes[superbin]; //number of connected modules to this pixel
