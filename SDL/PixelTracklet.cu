@@ -25,17 +25,17 @@ void SDL::createPixelTrackletsInUnifiedMemory(struct pixelTracklets& pixelTrackl
     cudaMallocManaged(&pixelTrackletsInGPU.betaIn, maxPixelTracklets *3* sizeof(float));
 
 #ifdef CUT_VALUE_DEBUG
-    cudaMallocManaged(&trackletsInGPU.zLo, maxPixelTracklets * sizeof(float));
-    cudaMallocManaged(&trackletsInGPU.zHi, maxPixelTracklets * sizeof(float));
-    cudaMallocManaged(&trackletsInGPU.zLoPointed, maxPixelTracklets * sizeof(float));
-    cudaMallocManaged(&trackletsInGPU.zHiPointed, maxPixelTracklets * sizeof(float));
-    cudaMallocManaged(&trackletsInGPU.sdlCut, maxPixelTracklets * sizeof(float));
-    cudaMallocManaged(&trackletsInGPU.betaInCut, maxPixelTracklets * sizeof(float));
-    cudaMallocManaged(&trackletsInGPU.betaOutCut, maxPixelTracklets * sizeof(float));
-    cudaMallocManaged(&trackletsInGPU.deltaBetaCut, maxPixelTracklets * sizeof(float));
-    cudaMallocManaged(&trackletsInGPU.rtLo, maxPixelTracklets * sizeof(float));
-    cudaMallocManaged(&trackletsInGPU.rtHi, maxPixelTracklets * sizeof(float));
-    cudaMallocManaged(&trackletsInGPU.kZ, maxPixelTracklets * sizeof(float));
+    cudaMallocManaged(&pixelTrackletsInGPU.zLo, maxPixelTracklets * sizeof(float));
+    cudaMallocManaged(&pixelTrackletsInGPU.zHi, maxPixelTracklets * sizeof(float));
+    cudaMallocManaged(&pixelTrackletsInGPU.zLoPointed, maxPixelTracklets * sizeof(float));
+    cudaMallocManaged(&pixelTrackletsInGPU.zHiPointed, maxPixelTracklets * sizeof(float));
+    cudaMallocManaged(&pixelTrackletsInGPU.sdlCut, maxPixelTracklets * sizeof(float));
+    cudaMallocManaged(&pixelTrackletsInGPU.betaInCut, maxPixelTracklets * sizeof(float));
+    cudaMallocManaged(&pixelTrackletsInGPU.betaOutCut, maxPixelTracklets * sizeof(float));
+    cudaMallocManaged(&pixelTrackletsInGPU.deltaBetaCut, maxPixelTracklets * sizeof(float));
+    cudaMallocManaged(&pixelTrackletsInGPU.rtLo, maxPixelTracklets * sizeof(float));
+    cudaMallocManaged(&pixelTrackletsInGPU.rtHi, maxPixelTracklets * sizeof(float));
+    cudaMallocManaged(&pixelTrackletsInGPU.kZ, maxPixelTracklets * sizeof(float));
 
 #endif
 #endif
@@ -99,7 +99,7 @@ __device__ void SDL::addPixelTrackletToMemory(struct pixelTracklets& pixelTrackl
     pixelTrackletsInGPU.pt_beta[pixelTrackletIndex] = pt_beta;
 
 #ifdef CUT_VALUE_DEBUG
-    pixelTrackletsInGPU.zLo[trackletIndex] = zLo;
+    pixelTrackletsInGPU.zLo[pixelTrackletIndex] = zLo;
     pixelTrackletsInGPU.zHi[pixelTrackletIndex] = zHi;
     pixelTrackletsInGPU.rtLo[pixelTrackletIndex] = rtLo;
     pixelTrackletsInGPU.rtHi[pixelTrackletIndex] = rtHi;
@@ -110,6 +110,37 @@ __device__ void SDL::addPixelTrackletToMemory(struct pixelTracklets& pixelTrackl
     pixelTrackletsInGPU.betaOutCut[pixelTrackletIndex] = betaOutCut;
     pixelTrackletsInGPU.deltaBetaCut[pixelTrackletIndex] = deltaBetaCut;
     pixelTrackletsInGPU.kZ[pixelTrackletIndex] = kZ;
+#endif
+
+}
+__device__ void SDL::rmPixelTrackletToMemory(struct pixelTracklets& pixelTrackletsInGPU, unsigned int innerSegmentIndex, unsigned int outerSegmentIndex, unsigned int innerInnerLowerModuleIndex, unsigned int innerOuterLowerModuleIndex, unsigned int outerInnerLowerModuleIndex, unsigned int outerOuterLowerModuleIndex, float& zOut, float& rtOut, float& deltaPhiPos, float& deltaPhi, float& betaIn, float& betaOut, float pt_beta, unsigned int pixelTrackletIndex)
+{
+    pixelTrackletsInGPU.segmentIndices[2 * pixelTrackletIndex] = 0;//innerSegmentIndex;
+    pixelTrackletsInGPU.segmentIndices[2 * pixelTrackletIndex + 1] = 0;//outerSegmentIndex;
+    pixelTrackletsInGPU.lowerModuleIndices[2 * pixelTrackletIndex] = 0;//outerInnerLowerModuleIndex;
+    pixelTrackletsInGPU.lowerModuleIndices[2 * pixelTrackletIndex + 1] = 0;//outerOuterLowerModuleIndex;
+
+    pixelTrackletsInGPU.zOut[pixelTrackletIndex] = 0;//zOut;
+    pixelTrackletsInGPU.rtOut[pixelTrackletIndex] = 0;//rtOut;
+    pixelTrackletsInGPU.deltaPhiPos[pixelTrackletIndex] = 0;//deltaPhiPos;
+    pixelTrackletsInGPU.deltaPhi[pixelTrackletIndex] = 0;//deltaPhi;
+
+    pixelTrackletsInGPU.betaIn[pixelTrackletIndex] = 0;//betaIn;
+    pixelTrackletsInGPU.betaOut[pixelTrackletIndex] = 0;//betaOut;
+    pixelTrackletsInGPU.pt_beta[pixelTrackletIndex] = 0;//pt_beta;
+
+#ifdef CUT_VALUE_DEBUG
+    pixelTrackletsInGPU.zLo[pixelTrackletIndex] = 0;//zLo;
+    pixelTrackletsInGPU.zHi[pixelTrackletIndex] = 0;//zHi;
+    pixelTrackletsInGPU.rtLo[pixelTrackletIndex] = 0;//rtLo;
+    pixelTrackletsInGPU.rtHi[pixelTrackletIndex] = 0;//rtHi;
+    pixelTrackletsInGPU.zLoPointed[pixelTrackletIndex] =0;// zLoPointed;
+    pixelTrackletsInGPU.zHiPointed[pixelTrackletIndex] =0;// zHiPointed;
+    pixelTrackletsInGPU.sdlCut[pixelTrackletIndex] =0;// sdlCut;
+    pixelTrackletsInGPU.betaInCut[pixelTrackletIndex] = 0;//betaInCut;
+    pixelTrackletsInGPU.betaOutCut[pixelTrackletIndex] =0;// betaOutCut;
+    pixelTrackletsInGPU.deltaBetaCut[pixelTrackletIndex] =0;// deltaBetaCut;
+    pixelTrackletsInGPU.kZ[pixelTrackletIndex] =0;// kZ;
 #endif
 
 }
