@@ -11,6 +11,7 @@ SDL::quintuplets::quintuplets()
     nQuintuplets = nullptr;
     innerRadius = nullptr;
     outerRadius = nullptr;
+    isDup = nullptr;
 
 #ifdef CUT_VALUE_DEBUG
     innerRadiusMin = nullptr;
@@ -43,12 +44,14 @@ void SDL::quintuplets::freeMemoryCache()
     cms::cuda::free_device(dev, nQuintuplets);
     cms::cuda::free_device(dev, innerRadius);
     cms::cuda::free_device(dev, outerRadius);
+    cms::cuda::free_device(dev, isDup);
 #else
     cms::cuda::free_managed(tripletIndices);
     cms::cuda::free_managed(lowerModuleIndices);
     cms::cuda::free_managed(nQuintuplets);
     cms::cuda::free_managed(innerRadius);
     cms::cuda::free_managed(outerRadius);
+    cms::cuda::free_managed(isDup);
 #endif
 }
 
@@ -59,6 +62,7 @@ void SDL::quintuplets::freeMemory()
     cudaFree(nQuintuplets);
     cudaFree(innerRadius);
     cudaFree(outerRadius);
+    cudaFree(isDup);
 
 #ifdef CUT_VALUE_DEBUG
     cudaFree(innerRadiusMin);
@@ -141,6 +145,7 @@ void SDL::createQuintupletsInUnifiedMemory(struct SDL::quintuplets& quintupletsI
     quintupletsInGPU.nQuintuplets = (unsigned int*)cms::cuda::allocate_managed(nLowerModules * sizeof(unsigned int), stream);
     quintupletsInGPU.innerRadius = (float*)cms::cuda::allocate_managed(nMemoryLocations * sizeof(float), stream);
     quintupletsInGPU.outerRadius = (float*)cms::cuda::allocate_managed(nMemoryLocations * sizeof(float), stream);
+    quintupletsInGPU.isDup = (bool*)cms::cuda::allocate_managed(nMemoryLocations * sizeof(bool), stream);
 #else
     cudaMallocManaged(&quintupletsInGPU.tripletIndices, 2 * nMemoryLocations * sizeof(unsigned int));
     cudaMallocManaged(&quintupletsInGPU.lowerModuleIndices, 5 * nMemoryLocations * sizeof(unsigned int)); 
@@ -148,6 +153,7 @@ void SDL::createQuintupletsInUnifiedMemory(struct SDL::quintuplets& quintupletsI
     cudaMallocManaged(&quintupletsInGPU.nQuintuplets, nLowerModules * sizeof(unsigned int));
     cudaMallocManaged(&quintupletsInGPU.innerRadius, nMemoryLocations * sizeof(float));
     cudaMallocManaged(&quintupletsInGPU.outerRadius, nMemoryLocations * sizeof(float));
+    cudaMallocManaged(&quintupletsInGPU.isDup, nMemoryLocations * sizeof(bool));
 
 #ifdef CUT_VALUE_DEBUG
     cudaMallocManaged(&quintupletsInGPU.innerRadiusMin, nMemoryLocations * sizeof(float));
@@ -186,12 +192,14 @@ void SDL::createQuintupletsInExplicitMemory(struct SDL::quintuplets& quintuplets
     quintupletsInGPU.nQuintuplets = (unsigned int*)cms::cuda::allocate_device(dev, nLowerModules * sizeof(unsigned int), stream);
     quintupletsInGPU.innerRadius = (float*)cms::cuda::allocate_device(dev, nMemoryLocations * sizeof(float), stream);
     quintupletsInGPU.outerRadius = (float*)cms::cuda::allocate_device(dev, nMemoryLocations * sizeof(float), stream);
+    quintupletsInGPU.isDup = (bool*)cms::cuda::allocate_device(dev, nMemoryLocations * sizeof(bool), stream);
 #else
     cudaMalloc(&quintupletsInGPU.tripletIndices, 2 * nMemoryLocations * sizeof(unsigned int));
     cudaMalloc(&quintupletsInGPU.lowerModuleIndices, 5 * nMemoryLocations * sizeof(unsigned int));
     cudaMalloc(&quintupletsInGPU.nQuintuplets, nLowerModules * sizeof(unsigned int));
     cudaMalloc(&quintupletsInGPU.innerRadius, nMemoryLocations * sizeof(float));
     cudaMalloc(&quintupletsInGPU.outerRadius, nMemoryLocations * sizeof(float));
+    cudaMalloc(&quintupletsInGPU.isDup, nMemoryLocations * sizeof(bool));
 #endif
     cudaMemset(quintupletsInGPU.nQuintuplets,0,nLowerModules * sizeof(unsigned int));
 }
@@ -202,7 +210,7 @@ __device__ void SDL::addQuintupletToMemory(struct SDL::quintuplets& quintupletsI
         float innerRadiusMin2S, float innerRadiusMax2S, float bridgeRadiusMin2S, float bridgeRadiusMax2S, float outerRadiusMin2S, float outerRadiusMax2S,unsigned int quintupletIndex)
 
 #else
-__device__ void SDL::addQuintupletToMemory(struct SDL::quintuplets& quintupletsInGPU, unsigned int innerTripletIndex, unsigned int outerTripletIndex, unsigned int lowerModule1, unsigned int lowerModule2, unsigned int lowerModule3, unsigned int lowerModule4, unsigned int lowerModule5, float innerRadius, float outerRadius, unsigned int quintupletIndex)
+__device__ void SDL::addQuintupletToMemory(struct SDL::quintuplets& quintupletsInGPU, unsigned int innerTripletIndex, unsigned int outerTripletIndex, unsigned int lowerModule1, unsigned int lowerModule2, unsigned int lowerModule3, unsigned int lowerModule4, unsigned int lowerModule5, float innerRadius, float outerRadius, unsigned int quintupletIndex,bool isDup)
 #endif
 
 {
@@ -216,6 +224,7 @@ __device__ void SDL::addQuintupletToMemory(struct SDL::quintuplets& quintupletsI
     quintupletsInGPU.lowerModuleIndices[5 * quintupletIndex + 4] = lowerModule5;
     quintupletsInGPU.innerRadius[quintupletIndex] = innerRadius;
     quintupletsInGPU.outerRadius[quintupletIndex] = outerRadius;
+    quintupletsInGPU.isDup[quintupletIndex] = isDup;
 
 #ifdef CUT_VALUE_DEBUG
     quintupletsInGPU.innerRadiusMin[quintupletIndex] = innerRadiusMin;

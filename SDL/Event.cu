@@ -1795,7 +1795,9 @@ void SDL::Event::createQuintuplets()
       {
 	std::cout<<"sync failed with error : "<<cudaGetErrorString(cudaerr)<<std::endl;
       }
-    removeDupQuintupletsInGPU<<<1,1>>>(*modulesInGPU, *hitsInGPU, *mdsInGPU, *segmentsInGPU, *tripletsInGPU, *quintupletsInGPU, threadIdx_gpu, threadIdx_gpu_offset);
+    dim3 dupThreads(32,32,1);
+    dim3 dupBlocks(16,16,1);
+    removeDupQuintupletsInGPU<<<dupBlocks,dupThreads>>>(*modulesInGPU, *hitsInGPU, *mdsInGPU, *segmentsInGPU, *tripletsInGPU, *quintupletsInGPU, threadIdx_gpu, threadIdx_gpu_offset);
     free(threadIdx);
     free(nTriplets);
     cudaFree(threadIdx_gpu);
@@ -2798,7 +2800,7 @@ __global__ void createPixelTrackletsInGPU(struct SDL::modules& modulesInGPU, str
     }
 }
 
-__device__ bool checkHits(struct SDL::hits& hitsInGPU,unsigned int hit1, unsigned int hit2){
+__device__ bool inline checkHits(unsigned int hit1, unsigned int hit2){
 
         if(hit1 == hit2){return true;}
         else {return false;}
@@ -2857,44 +2859,44 @@ __global__ void createPixelTrackletsInGPUFromMap(struct SDL::modules& modulesInG
         //unsigned int hit1_2 = mdsInGPU.hitIndices[segmentsInGPU.mdIndices[outerSegmentIndex+1]];
         //unsigned int hit1_3 = mdsInGPU.hitIndices[segmentsInGPU.mdIndices[outerSegmentIndex]+1];
         //unsigned int hit1_4 = mdsInGPU.hitIndices[segmentsInGPU.mdIndices[outerSegmentIndex+1]+1];
-        unsigned int hit1_1 = mdsInGPU.hitIndices[segmentsInGPU.mdIndices[innerSegmentIndex]];// inner seg (pixel) inner md inner hit
-        unsigned int hit1_2 = mdsInGPU.hitIndices[segmentsInGPU.mdIndices[innerSegmentIndex+1]];// inner seg (pixel) outer md inner hit
-        unsigned int hit1_3 = mdsInGPU.hitIndices[segmentsInGPU.mdIndices[innerSegmentIndex]+1];// inner seg inner md outer hit
-        unsigned int hit1_4 = mdsInGPU.hitIndices[segmentsInGPU.mdIndices[innerSegmentIndex+1]+1];// inner seg outer md outer hit
-        unsigned int hit1_5 = mdsInGPU.hitIndices[segmentsInGPU.mdIndices[outerSegmentIndex]];// outer seg inner md inner hit
-        unsigned int hit1_6 = mdsInGPU.hitIndices[segmentsInGPU.mdIndices[outerSegmentIndex+1]];// outer seg outer md inner hit
-        unsigned int hit1_7 = mdsInGPU.hitIndices[segmentsInGPU.mdIndices[outerSegmentIndex]+1];// outer seg inner md outer hit
-        unsigned int hit1_8 = mdsInGPU.hitIndices[segmentsInGPU.mdIndices[outerSegmentIndex+1]+1];// outer seg outer md outer hit
+        unsigned int hit1_1 = mdsInGPU.hitIndices[2*segmentsInGPU.mdIndices[2*innerSegmentIndex]];// inner seg (pixel) inner md inner hit
+        unsigned int hit1_2 = mdsInGPU.hitIndices[2*segmentsInGPU.mdIndices[2*innerSegmentIndex+1]];// inner seg (pixel) outer md inner hit
+        unsigned int hit1_3 = mdsInGPU.hitIndices[2*segmentsInGPU.mdIndices[2*innerSegmentIndex]+1];// inner seg inner md outer hit
+        unsigned int hit1_4 = mdsInGPU.hitIndices[2*segmentsInGPU.mdIndices[2*innerSegmentIndex+1]+1];// inner seg outer md outer hit
+        unsigned int hit1_5 = mdsInGPU.hitIndices[2*segmentsInGPU.mdIndices[2*outerSegmentIndex]];// outer seg inner md inner hit
+        unsigned int hit1_6 = mdsInGPU.hitIndices[2*segmentsInGPU.mdIndices[2*outerSegmentIndex+1]];// outer seg outer md inner hit
+        unsigned int hit1_7 = mdsInGPU.hitIndices[2*segmentsInGPU.mdIndices[2*outerSegmentIndex]+1];// outer seg inner md outer hit
+        unsigned int hit1_8 = mdsInGPU.hitIndices[2*segmentsInGPU.mdIndices[2*outerSegmentIndex+1]+1];// outer seg outer md outer hit
 
-        unsigned int hit2_1 = mdsInGPU.hitIndices[segmentsInGPU.mdIndices[pixelTrackletsInGPU.segmentIndices[jx]]]; // inner seg (pixel) inner md inner hit
-        unsigned int hit2_2 = mdsInGPU.hitIndices[segmentsInGPU.mdIndices[pixelTrackletsInGPU.segmentIndices[jx]+1]];// inner seg outer md inner hit
-        unsigned int hit2_3 = mdsInGPU.hitIndices[segmentsInGPU.mdIndices[pixelTrackletsInGPU.segmentIndices[jx]]+1]; // inner seg (pixel) inner md outer hit 
-        unsigned int hit2_4 = mdsInGPU.hitIndices[segmentsInGPU.mdIndices[pixelTrackletsInGPU.segmentIndices[jx]+1]+1];// inner seg outer md outer hit
-        unsigned int hit2_5 = mdsInGPU.hitIndices[segmentsInGPU.mdIndices[pixelTrackletsInGPU.segmentIndices[jx+1]]];// outer seg inner md inner hit
-        unsigned int hit2_6 = mdsInGPU.hitIndices[segmentsInGPU.mdIndices[pixelTrackletsInGPU.segmentIndices[jx+1]+1]];// outer seg outer md innher hit 
-        unsigned int hit2_7 = mdsInGPU.hitIndices[segmentsInGPU.mdIndices[pixelTrackletsInGPU.segmentIndices[jx+1]]+1];// outer seg inner md outer hit
-        unsigned int hit2_8 = mdsInGPU.hitIndices[segmentsInGPU.mdIndices[pixelTrackletsInGPU.segmentIndices[jx+1]+1]+1];// outer seg outer md outer hit
+        unsigned int hit2_1 = mdsInGPU.hitIndices[2*segmentsInGPU.mdIndices[2*pixelTrackletsInGPU.segmentIndices[2*jx]]]; // inner seg (pixel) inner md inner hit
+        unsigned int hit2_2 = mdsInGPU.hitIndices[2*segmentsInGPU.mdIndices[2*pixelTrackletsInGPU.segmentIndices[2*jx]+1]];// inner seg outer md inner hit
+        unsigned int hit2_3 = mdsInGPU.hitIndices[2*segmentsInGPU.mdIndices[2*pixelTrackletsInGPU.segmentIndices[2*jx]]+1]; // inner seg (pixel) inner md outer hit 
+        unsigned int hit2_4 = mdsInGPU.hitIndices[2*segmentsInGPU.mdIndices[2*pixelTrackletsInGPU.segmentIndices[2*jx]+1]+1];// inner seg outer md outer hit
+        unsigned int hit2_5 = mdsInGPU.hitIndices[2*segmentsInGPU.mdIndices[2*pixelTrackletsInGPU.segmentIndices[2*jx+1]]];// outer seg inner md inner hit
+        unsigned int hit2_6 = mdsInGPU.hitIndices[2*segmentsInGPU.mdIndices[2*pixelTrackletsInGPU.segmentIndices[2*jx+1]+1]];// outer seg outer md innher hit 
+        unsigned int hit2_7 = mdsInGPU.hitIndices[2*segmentsInGPU.mdIndices[2*pixelTrackletsInGPU.segmentIndices[2*jx+1]]+1];// outer seg inner md outer hit
+        unsigned int hit2_8 = mdsInGPU.hitIndices[2*segmentsInGPU.mdIndices[2*pixelTrackletsInGPU.segmentIndices[2*jx+1]+1]+1];// outer seg outer md outer hit
         //check pixel hits against each other
         bool matched_11, matched_12, matched_13, matched_14;
-        matched_11 = checkHits(hitsInGPU,hit1_1,hit2_1);
-        matched_12 = checkHits(hitsInGPU,hit1_1,hit2_2);
-        matched_13 = checkHits(hitsInGPU,hit1_1,hit2_3);
-        matched_14 = checkHits(hitsInGPU,hit1_1,hit2_4);
+        matched_11 = checkHits(hit1_1,hit2_1);
+        matched_12 = checkHits(hit1_1,hit2_2);
+        matched_13 = checkHits(hit1_1,hit2_3);
+        matched_14 = checkHits(hit1_1,hit2_4);
         bool matched_21, matched_22, matched_23, matched_24;
-        matched_21 = checkHits(hitsInGPU,hit1_2,hit2_1);
-        matched_22 = checkHits(hitsInGPU,hit1_2,hit2_2);
-        matched_23 = checkHits(hitsInGPU,hit1_2,hit2_3);
-        matched_24 = checkHits(hitsInGPU,hit1_2,hit2_4);
+        matched_21 = checkHits(hit1_2,hit2_1);
+        matched_22 = checkHits(hit1_2,hit2_2);
+        matched_23 = checkHits(hit1_2,hit2_3);
+        matched_24 = checkHits(hit1_2,hit2_4);
         bool matched_31, matched_32, matched_33, matched_34;
-        matched_31 = checkHits(hitsInGPU,hit1_3,hit2_1);
-        matched_32 = checkHits(hitsInGPU,hit1_3,hit2_2);
-        matched_33 = checkHits(hitsInGPU,hit1_3,hit2_3);
-        matched_34 = checkHits(hitsInGPU,hit1_3,hit2_4);
+        matched_31 = checkHits(hit1_3,hit2_1);
+        matched_32 = checkHits(hit1_3,hit2_2);
+        matched_33 = checkHits(hit1_3,hit2_3);
+        matched_34 = checkHits(hit1_3,hit2_4);
         bool matched_41, matched_42, matched_43, matched_44;
-        matched_41 = checkHits(hitsInGPU,hit1_4,hit2_1);
-        matched_42 = checkHits(hitsInGPU,hit1_4,hit2_2);
-        matched_43 = checkHits(hitsInGPU,hit1_4,hit2_3);
-        matched_44 = checkHits(hitsInGPU,hit1_4,hit2_4);
+        matched_41 = checkHits(hit1_4,hit2_1);
+        matched_42 = checkHits(hit1_4,hit2_2);
+        matched_43 = checkHits(hit1_4,hit2_3);
+        matched_44 = checkHits(hit1_4,hit2_4);
         short matched_1 = matched_11 || matched_12 || matched_13 || matched_14;
         short matched_2 = matched_21 || matched_22 || matched_23 || matched_24;
         short matched_3 = matched_31 || matched_32 || matched_33 || matched_34;
@@ -2904,25 +2906,25 @@ __global__ void createPixelTrackletsInGPUFromMap(struct SDL::modules& modulesInG
         //continue;}
         //check outer segment hits against each other
         bool matched_51, matched_52, matched_53, matched_54;
-        matched_51 = checkHits(hitsInGPU,hit1_5,hit2_5);
-        matched_52 = checkHits(hitsInGPU,hit1_5,hit2_6);
-        matched_53 = checkHits(hitsInGPU,hit1_5,hit2_7);
-        matched_54 = checkHits(hitsInGPU,hit1_5,hit2_8);
+        matched_51 = checkHits(hit1_5,hit2_5);
+        matched_52 = checkHits(hit1_5,hit2_6);
+        matched_53 = checkHits(hit1_5,hit2_7);
+        matched_54 = checkHits(hit1_5,hit2_8);
         bool matched_61, matched_62, matched_63, matched_64;
-        matched_61 = checkHits(hitsInGPU,hit1_6,hit2_5);
-        matched_62 = checkHits(hitsInGPU,hit1_6,hit2_6);
-        matched_63 = checkHits(hitsInGPU,hit1_6,hit2_7);
-        matched_64 = checkHits(hitsInGPU,hit1_6,hit2_8);
+        matched_61 = checkHits(hit1_6,hit2_5);
+        matched_62 = checkHits(hit1_6,hit2_6);
+        matched_63 = checkHits(hit1_6,hit2_7);
+        matched_64 = checkHits(hit1_6,hit2_8);
         bool matched_71, matched_72, matched_73, matched_74;
-        matched_71 = checkHits(hitsInGPU,hit1_7,hit2_5);
-        matched_72 = checkHits(hitsInGPU,hit1_7,hit2_6);
-        matched_73 = checkHits(hitsInGPU,hit1_7,hit2_7);
-        matched_74 = checkHits(hitsInGPU,hit1_7,hit2_8);
+        matched_71 = checkHits(hit1_7,hit2_5);
+        matched_72 = checkHits(hit1_7,hit2_6);
+        matched_73 = checkHits(hit1_7,hit2_7);
+        matched_74 = checkHits(hit1_7,hit2_8);
         bool matched_81, matched_82, matched_83, matched_84;
-        matched_81 = checkHits(hitsInGPU,hit1_8,hit2_5);
-        matched_82 = checkHits(hitsInGPU,hit1_8,hit2_6);
-        matched_83 = checkHits(hitsInGPU,hit1_8,hit2_7);
-        matched_84 = checkHits(hitsInGPU,hit1_8,hit2_8);
+        matched_81 = checkHits(hit1_8,hit2_5);
+        matched_82 = checkHits(hit1_8,hit2_6);
+        matched_83 = checkHits(hit1_8,hit2_7);
+        matched_84 = checkHits(hit1_8,hit2_8);
         short matched_5 = matched_51 || matched_52 || matched_53 || matched_54;
         short matched_6 = matched_61 || matched_62 || matched_63 || matched_64;
         short matched_7 = matched_71 || matched_72 || matched_73 || matched_74;
@@ -4032,12 +4034,12 @@ __global__ void createPixelTripletsInGPU(struct SDL::modules& modulesInGPU, stru
 
 //#endif
 
-
+__device__ int duplicateCounter;
 __global__ void removeDupQuintupletsInGPU(struct SDL::modules& modulesInGPU, struct SDL::hits& hitsInGPU, struct SDL::miniDoublets& mdsInGPU, struct SDL::segments& segmentsInGPU, struct SDL::triplets& tripletsInGPU, struct SDL::quintuplets& quintupletsInGPU, unsigned int* threadIdx_gpu, unsigned int* threadIdx_gpu_offset)
 {
       int dup_count=0;
-      for(unsigned int lowmod1=0; lowmod1<*modulesInGPU.nLowerModules;lowmod1++){
-      for(unsigned int ix1=0; ix1<quintupletsInGPU.nQuintuplets[lowmod1]; ix1++){
+      for(unsigned int lowmod1=blockIdx.x*blockDim.x+threadIdx.x; lowmod1<*modulesInGPU.nLowerModules;lowmod1+=blockDim.x*gridDim.x){
+      for(unsigned int ix1=blockIdx.y*blockDim.y+threadIdx.y; ix1<quintupletsInGPU.nQuintuplets[lowmod1]; ix1+=blockDim.y*gridDim.y){
         unsigned int ix = modulesInGPU.quintupletModuleIndices[lowmod1] + ix1;
       //for(unsigned int lowmod=0; lowmod<*modulesInGPU.nLowerModules;lowmod++){
       //for(unsigned int jx1=0; jx1<quintupletsInGPU.nQuintuplets[lowmod]; jx1++){
@@ -4047,9 +4049,11 @@ __global__ void removeDupQuintupletsInGPU(struct SDL::modules& modulesInGPU, str
         for(unsigned int lowmod=0; lowmod<*modulesInGPU.nLowerModules;lowmod++){
       for(unsigned int jx1=0; jx1<quintupletsInGPU.nQuintuplets[lowmod]; jx1++){
         unsigned int jx = modulesInGPU.quintupletModuleIndices[lowmod] + jx1;
-        if(ix==jx){continue;}
+        if(ix>=jx){continue;}
+        //if(ix==jx){continue;}
         //for(unsigned int jx=0; jx<quintupletsInGPU.nQuintuplets[lowmod]+modulesInGPU.quintupletModuleIndices[lowmod]; jx++){
-        //printf("jx: %u \n",jx);
+        if(quintupletsInGPU.isDup[jx]==1){continue;}
+        //printf("ix jx: %u %u \n",ix,jx);
         unsigned int hit1_0 = mdsInGPU.hitIndices[2*segmentsInGPU.mdIndices[2*tripletsInGPU.segmentIndices[2*quintupletsInGPU.tripletIndices[2*ix]]]]; // inner triplet inner segment inner md inner hit
         unsigned int hit1_1 = mdsInGPU.hitIndices[2*segmentsInGPU.mdIndices[2*tripletsInGPU.segmentIndices[2*quintupletsInGPU.tripletIndices[2*ix]]]+1]; // inner triplet inner segment inner md outer hit
         unsigned int hit1_2 = mdsInGPU.hitIndices[2*segmentsInGPU.mdIndices[2*tripletsInGPU.segmentIndices[2*quintupletsInGPU.tripletIndices[2*ix]]+1]]; // inner triplet inner segment outer md inner hit
@@ -4072,16 +4076,26 @@ __global__ void removeDupQuintupletsInGPU(struct SDL::modules& modulesInGPU, str
         unsigned int hit2_8 = mdsInGPU.hitIndices[2*segmentsInGPU.mdIndices[2*tripletsInGPU.segmentIndices[2*quintupletsInGPU.tripletIndices[2*jx+1]+1]+1]]; // outer triplet outersegment outer md inner hit
         unsigned int hit2_9 = mdsInGPU.hitIndices[2*segmentsInGPU.mdIndices[2*tripletsInGPU.segmentIndices[2*quintupletsInGPU.tripletIndices[2*jx+1]+1]+1]+1]; // outer triplet outersegment outer md outer hit
 
-        short matched_0 = checkHits(hitsInGPU,hit1_0,hit2_0) ||checkHits(hitsInGPU,hit1_0,hit2_1) ||checkHits(hitsInGPU,hit1_0,hit2_2) ||checkHits(hitsInGPU,hit1_0,hit2_3) ||checkHits(hitsInGPU,hit1_0,hit2_4) ||checkHits(hitsInGPU,hit1_0,hit2_5) ||checkHits(hitsInGPU,hit1_0,hit2_6) ||checkHits(hitsInGPU,hit1_0,hit2_7) ||checkHits(hitsInGPU,hit1_0,hit2_8) ||checkHits(hitsInGPU,hit1_0,hit2_9);
-        short matched_1 = checkHits(hitsInGPU,hit1_1,hit2_0) ||checkHits(hitsInGPU,hit1_1,hit2_1) ||checkHits(hitsInGPU,hit1_1,hit2_2) ||checkHits(hitsInGPU,hit1_1,hit2_3) ||checkHits(hitsInGPU,hit1_1,hit2_4) ||checkHits(hitsInGPU,hit1_1,hit2_5) ||checkHits(hitsInGPU,hit1_1,hit2_6) ||checkHits(hitsInGPU,hit1_1,hit2_7) ||checkHits(hitsInGPU,hit1_1,hit2_8) ||checkHits(hitsInGPU,hit1_1,hit2_9);
-        short matched_2 = checkHits(hitsInGPU,hit1_2,hit2_0) ||checkHits(hitsInGPU,hit1_2,hit2_1) ||checkHits(hitsInGPU,hit1_2,hit2_2) ||checkHits(hitsInGPU,hit1_2,hit2_3) ||checkHits(hitsInGPU,hit1_2,hit2_4) ||checkHits(hitsInGPU,hit1_2,hit2_5) ||checkHits(hitsInGPU,hit1_2,hit2_6) ||checkHits(hitsInGPU,hit1_2,hit2_7) ||checkHits(hitsInGPU,hit1_2,hit2_8) ||checkHits(hitsInGPU,hit1_2,hit2_9);
-        short matched_3 = checkHits(hitsInGPU,hit1_3,hit2_0) ||checkHits(hitsInGPU,hit1_3,hit2_1) ||checkHits(hitsInGPU,hit1_3,hit2_2) ||checkHits(hitsInGPU,hit1_3,hit2_3) ||checkHits(hitsInGPU,hit1_3,hit2_4) ||checkHits(hitsInGPU,hit1_3,hit2_5) ||checkHits(hitsInGPU,hit1_3,hit2_6) ||checkHits(hitsInGPU,hit1_3,hit2_7) ||checkHits(hitsInGPU,hit1_3,hit2_8) ||checkHits(hitsInGPU,hit1_3,hit2_9);
-        short matched_4 = checkHits(hitsInGPU,hit1_4,hit2_0) ||checkHits(hitsInGPU,hit1_4,hit2_1) ||checkHits(hitsInGPU,hit1_4,hit2_2) ||checkHits(hitsInGPU,hit1_4,hit2_3) ||checkHits(hitsInGPU,hit1_4,hit2_4) ||checkHits(hitsInGPU,hit1_4,hit2_5) ||checkHits(hitsInGPU,hit1_4,hit2_6) ||checkHits(hitsInGPU,hit1_4,hit2_7) ||checkHits(hitsInGPU,hit1_4,hit2_8) ||checkHits(hitsInGPU,hit1_4,hit2_9);
-        short matched_5 = checkHits(hitsInGPU,hit1_5,hit2_0) ||checkHits(hitsInGPU,hit1_5,hit2_1) ||checkHits(hitsInGPU,hit1_5,hit2_2) ||checkHits(hitsInGPU,hit1_5,hit2_3) ||checkHits(hitsInGPU,hit1_5,hit2_4) ||checkHits(hitsInGPU,hit1_5,hit2_5) ||checkHits(hitsInGPU,hit1_5,hit2_6) ||checkHits(hitsInGPU,hit1_5,hit2_7) ||checkHits(hitsInGPU,hit1_5,hit2_8) ||checkHits(hitsInGPU,hit1_5,hit2_9);
-        short matched_6 = checkHits(hitsInGPU,hit1_6,hit2_0) ||checkHits(hitsInGPU,hit1_6,hit2_1) ||checkHits(hitsInGPU,hit1_6,hit2_2) ||checkHits(hitsInGPU,hit1_6,hit2_3) ||checkHits(hitsInGPU,hit1_6,hit2_4) ||checkHits(hitsInGPU,hit1_6,hit2_5) ||checkHits(hitsInGPU,hit1_6,hit2_6) ||checkHits(hitsInGPU,hit1_6,hit2_7) ||checkHits(hitsInGPU,hit1_6,hit2_8) ||checkHits(hitsInGPU,hit1_6,hit2_9);
-        short matched_7 = checkHits(hitsInGPU,hit1_7,hit2_0) ||checkHits(hitsInGPU,hit1_7,hit2_1) ||checkHits(hitsInGPU,hit1_7,hit2_2) ||checkHits(hitsInGPU,hit1_7,hit2_3) ||checkHits(hitsInGPU,hit1_7,hit2_4) ||checkHits(hitsInGPU,hit1_7,hit2_5) ||checkHits(hitsInGPU,hit1_7,hit2_6) ||checkHits(hitsInGPU,hit1_7,hit2_7) ||checkHits(hitsInGPU,hit1_7,hit2_8) ||checkHits(hitsInGPU,hit1_7,hit2_9);
-        short matched_8 = checkHits(hitsInGPU,hit1_8,hit2_0) ||checkHits(hitsInGPU,hit1_8,hit2_1) ||checkHits(hitsInGPU,hit1_8,hit2_2) ||checkHits(hitsInGPU,hit1_8,hit2_3) ||checkHits(hitsInGPU,hit1_8,hit2_4) ||checkHits(hitsInGPU,hit1_8,hit2_5) ||checkHits(hitsInGPU,hit1_8,hit2_6) ||checkHits(hitsInGPU,hit1_8,hit2_7) ||checkHits(hitsInGPU,hit1_8,hit2_8) ||checkHits(hitsInGPU,hit1_8,hit2_9);
-        short matched_9 = checkHits(hitsInGPU,hit1_9,hit2_0) ||checkHits(hitsInGPU,hit1_9,hit2_1) ||checkHits(hitsInGPU,hit1_9,hit2_2) ||checkHits(hitsInGPU,hit1_9,hit2_3) ||checkHits(hitsInGPU,hit1_9,hit2_4) ||checkHits(hitsInGPU,hit1_9,hit2_5) ||checkHits(hitsInGPU,hit1_9,hit2_6) ||checkHits(hitsInGPU,hit1_9,hit2_7) ||checkHits(hitsInGPU,hit1_9,hit2_8) ||checkHits(hitsInGPU,hit1_9,hit2_9);
+        //short matched_0 = checkHits(hit1_0,hit2_0) ||checkHits(hit1_0,hit2_1) ||checkHits(hit1_0,hit2_2) ||checkHits(hit1_0,hit2_3) ||checkHits(hit1_0,hit2_4) ||checkHits(hit1_0,hit2_5) ||checkHits(hit1_0,hit2_6) ||checkHits(hit1_0,hit2_7) ||checkHits(hit1_0,hit2_8) ||checkHits(hit1_0,hit2_9);
+        //short matched_1 = checkHits(hit1_1,hit2_0) ||checkHits(hit1_1,hit2_1) ||checkHits(hit1_1,hit2_2) ||checkHits(hit1_1,hit2_3) ||checkHits(hit1_1,hit2_4) ||checkHits(hit1_1,hit2_5) ||checkHits(hit1_1,hit2_6) ||checkHits(hit1_1,hit2_7) ||checkHits(hit1_1,hit2_8) ||checkHits(hit1_1,hit2_9);
+        //short matched_2 = checkHits(hit1_2,hit2_0) ||checkHits(hit1_2,hit2_1) ||checkHits(hit1_2,hit2_2) ||checkHits(hit1_2,hit2_3) ||checkHits(hit1_2,hit2_4) ||checkHits(hit1_2,hit2_5) ||checkHits(hit1_2,hit2_6) ||checkHits(hit1_2,hit2_7) ||checkHits(hit1_2,hit2_8) ||checkHits(hit1_2,hit2_9);
+        //short matched_3 = checkHits(hit1_3,hit2_0) ||checkHits(hit1_3,hit2_1) ||checkHits(hit1_3,hit2_2) ||checkHits(hit1_3,hit2_3) ||checkHits(hit1_3,hit2_4) ||checkHits(hit1_3,hit2_5) ||checkHits(hit1_3,hit2_6) ||checkHits(hit1_3,hit2_7) ||checkHits(hit1_3,hit2_8) ||checkHits(hit1_3,hit2_9);
+        //short matched_4 = checkHits(hit1_4,hit2_0) ||checkHits(hit1_4,hit2_1) ||checkHits(hit1_4,hit2_2) ||checkHits(hit1_4,hit2_3) ||checkHits(hit1_4,hit2_4) ||checkHits(hit1_4,hit2_5) ||checkHits(hit1_4,hit2_6) ||checkHits(hit1_4,hit2_7) ||checkHits(hit1_4,hit2_8) ||checkHits(hit1_4,hit2_9);
+        //short matched_5 = checkHits(hit1_5,hit2_0) ||checkHits(hit1_5,hit2_1) ||checkHits(hit1_5,hit2_2) ||checkHits(hit1_5,hit2_3) ||checkHits(hit1_5,hit2_4) ||checkHits(hit1_5,hit2_5) ||checkHits(hit1_5,hit2_6) ||checkHits(hit1_5,hit2_7) ||checkHits(hit1_5,hit2_8) ||checkHits(hit1_5,hit2_9);
+        //short matched_6 = checkHits(hit1_6,hit2_0) ||checkHits(hit1_6,hit2_1) ||checkHits(hit1_6,hit2_2) ||checkHits(hit1_6,hit2_3) ||checkHits(hit1_6,hit2_4) ||checkHits(hit1_6,hit2_5) ||checkHits(hit1_6,hit2_6) ||checkHits(hit1_6,hit2_7) ||checkHits(hit1_6,hit2_8) ||checkHits(hit1_6,hit2_9);
+        //short matched_7 = checkHits(hit1_7,hit2_0) ||checkHits(hit1_7,hit2_1) ||checkHits(hit1_7,hit2_2) ||checkHits(hit1_7,hit2_3) ||checkHits(hit1_7,hit2_4) ||checkHits(hit1_7,hit2_5) ||checkHits(hit1_7,hit2_6) ||checkHits(hit1_7,hit2_7) ||checkHits(hit1_7,hit2_8) ||checkHits(hit1_7,hit2_9);
+        //short matched_8 = checkHits(hit1_8,hit2_0) ||checkHits(hit1_8,hit2_1) ||checkHits(hit1_8,hit2_2) ||checkHits(hit1_8,hit2_3) ||checkHits(hit1_8,hit2_4) ||checkHits(hit1_8,hit2_5) ||checkHits(hit1_8,hit2_6) ||checkHits(hit1_8,hit2_7) ||checkHits(hit1_8,hit2_8) ||checkHits(hit1_8,hit2_9);
+        //short matched_9 = checkHits(hit1_9,hit2_0) ||checkHits(hit1_9,hit2_1) ||checkHits(hit1_9,hit2_2) ||checkHits(hit1_9,hit2_3) ||checkHits(hit1_9,hit2_4) ||checkHits(hit1_9,hit2_5) ||checkHits(hit1_9,hit2_6) ||checkHits(hit1_9,hit2_7) ||checkHits(hit1_9,hit2_8) ||checkHits(hit1_9,hit2_9);
+        short matched_0 = checkHits(hit1_0,hit2_0) ||checkHits(hit1_0,hit2_2); 
+        short matched_1 = checkHits(hit1_1,hit2_1) ||checkHits(hit1_1,hit2_3);
+        short matched_2 = checkHits(hit1_2,hit2_0) ||checkHits(hit1_2,hit2_2) ||checkHits(hit1_2,hit2_4);
+        short matched_3 = checkHits(hit1_3,hit2_1) ||checkHits(hit1_3,hit2_3) ||checkHits(hit1_3,hit2_5);
+        short matched_4 = checkHits(hit1_4,hit2_2) ||checkHits(hit1_4,hit2_4) ||checkHits(hit1_4,hit2_6);
+        short matched_5 = checkHits(hit1_5,hit2_3) ||checkHits(hit1_5,hit2_5) ||checkHits(hit1_5,hit2_7);
+        short matched_6 = checkHits(hit1_6,hit2_4) ||checkHits(hit1_6,hit2_6) ||checkHits(hit1_6,hit2_8);
+        short matched_7 = checkHits(hit1_7,hit2_5) ||checkHits(hit1_7,hit2_7) ||checkHits(hit1_7,hit2_9);
+        short matched_8 = checkHits(hit1_8,hit2_6) ||checkHits(hit1_8,hit2_8);
+        short matched_9 = checkHits(hit1_9,hit2_7) ||checkHits(hit1_9,hit2_9);
 
         if(matched_0+matched_1+matched_2+matched_3+matched_4+matched_5+matched_6+matched_7+matched_8+matched_9>7){
                 isDup=true;dup_count++;
@@ -4093,8 +4107,10 @@ __global__ void removeDupQuintupletsInGPU(struct SDL::modules& modulesInGPU, str
       }
       if(isDup){break;}
       }
-                if(isDup){addQuintupletToMemory(quintupletsInGPU, 0, 0, 0, 0, 0, 0,0, 0, 0, ix);}
+                if(isDup){addQuintupletToMemory(quintupletsInGPU, 0, 0, 0, 0, 0, 0,0, 0, 0, ix,1);}
     }}
+//atomicAdd(&duplicateCounter,dup_count);
+//printf("dup count: %d %d\n",dup_count,duplicateCounter);
 
 }
 #ifndef NESTED_PARA
@@ -4160,16 +4176,26 @@ __global__ void createQuintupletsInGPU(struct SDL::modules& modulesInGPU, struct
         unsigned int hit2_8 = mdsInGPU.hitIndices[2*segmentsInGPU.mdIndices[2*tripletsInGPU.segmentIndices[2*quintupletsInGPU.tripletIndices[2*jx+1]+1]+1]]; // outer triplet outersegment outer md inner hit
         unsigned int hit2_9 = mdsInGPU.hitIndices[2*segmentsInGPU.mdIndices[2*tripletsInGPU.segmentIndices[2*quintupletsInGPU.tripletIndices[2*jx+1]+1]+1]+1]; // outer triplet outersegment outer md outer hit
 
-        short matched_0 = checkHits(hitsInGPU,hit1_0,hit2_0) ||checkHits(hitsInGPU,hit1_0,hit2_1) ||checkHits(hitsInGPU,hit1_0,hit2_2) ||checkHits(hitsInGPU,hit1_0,hit2_3) ||checkHits(hitsInGPU,hit1_0,hit2_4) ||checkHits(hitsInGPU,hit1_0,hit2_5) ||checkHits(hitsInGPU,hit1_0,hit2_6) ||checkHits(hitsInGPU,hit1_0,hit2_7) ||checkHits(hitsInGPU,hit1_0,hit2_8) ||checkHits(hitsInGPU,hit1_0,hit2_9);
-        short matched_1 = checkHits(hitsInGPU,hit1_1,hit2_0) ||checkHits(hitsInGPU,hit1_1,hit2_1) ||checkHits(hitsInGPU,hit1_1,hit2_2) ||checkHits(hitsInGPU,hit1_1,hit2_3) ||checkHits(hitsInGPU,hit1_1,hit2_4) ||checkHits(hitsInGPU,hit1_1,hit2_5) ||checkHits(hitsInGPU,hit1_1,hit2_6) ||checkHits(hitsInGPU,hit1_1,hit2_7) ||checkHits(hitsInGPU,hit1_1,hit2_8) ||checkHits(hitsInGPU,hit1_1,hit2_9);
-        short matched_2 = checkHits(hitsInGPU,hit1_2,hit2_0) ||checkHits(hitsInGPU,hit1_2,hit2_1) ||checkHits(hitsInGPU,hit1_2,hit2_2) ||checkHits(hitsInGPU,hit1_2,hit2_3) ||checkHits(hitsInGPU,hit1_2,hit2_4) ||checkHits(hitsInGPU,hit1_2,hit2_5) ||checkHits(hitsInGPU,hit1_2,hit2_6) ||checkHits(hitsInGPU,hit1_2,hit2_7) ||checkHits(hitsInGPU,hit1_2,hit2_8) ||checkHits(hitsInGPU,hit1_2,hit2_9);
-        short matched_3 = checkHits(hitsInGPU,hit1_3,hit2_0) ||checkHits(hitsInGPU,hit1_3,hit2_1) ||checkHits(hitsInGPU,hit1_3,hit2_2) ||checkHits(hitsInGPU,hit1_3,hit2_3) ||checkHits(hitsInGPU,hit1_3,hit2_4) ||checkHits(hitsInGPU,hit1_3,hit2_5) ||checkHits(hitsInGPU,hit1_3,hit2_6) ||checkHits(hitsInGPU,hit1_3,hit2_7) ||checkHits(hitsInGPU,hit1_3,hit2_8) ||checkHits(hitsInGPU,hit1_3,hit2_9);
-        short matched_4 = checkHits(hitsInGPU,hit1_4,hit2_0) ||checkHits(hitsInGPU,hit1_4,hit2_1) ||checkHits(hitsInGPU,hit1_4,hit2_2) ||checkHits(hitsInGPU,hit1_4,hit2_3) ||checkHits(hitsInGPU,hit1_4,hit2_4) ||checkHits(hitsInGPU,hit1_4,hit2_5) ||checkHits(hitsInGPU,hit1_4,hit2_6) ||checkHits(hitsInGPU,hit1_4,hit2_7) ||checkHits(hitsInGPU,hit1_4,hit2_8) ||checkHits(hitsInGPU,hit1_4,hit2_9);
-        short matched_5 = checkHits(hitsInGPU,hit1_5,hit2_0) ||checkHits(hitsInGPU,hit1_5,hit2_1) ||checkHits(hitsInGPU,hit1_5,hit2_2) ||checkHits(hitsInGPU,hit1_5,hit2_3) ||checkHits(hitsInGPU,hit1_5,hit2_4) ||checkHits(hitsInGPU,hit1_5,hit2_5) ||checkHits(hitsInGPU,hit1_5,hit2_6) ||checkHits(hitsInGPU,hit1_5,hit2_7) ||checkHits(hitsInGPU,hit1_5,hit2_8) ||checkHits(hitsInGPU,hit1_5,hit2_9);
-        short matched_6 = checkHits(hitsInGPU,hit1_6,hit2_0) ||checkHits(hitsInGPU,hit1_6,hit2_1) ||checkHits(hitsInGPU,hit1_6,hit2_2) ||checkHits(hitsInGPU,hit1_6,hit2_3) ||checkHits(hitsInGPU,hit1_6,hit2_4) ||checkHits(hitsInGPU,hit1_6,hit2_5) ||checkHits(hitsInGPU,hit1_6,hit2_6) ||checkHits(hitsInGPU,hit1_6,hit2_7) ||checkHits(hitsInGPU,hit1_6,hit2_8) ||checkHits(hitsInGPU,hit1_6,hit2_9);
-        short matched_7 = checkHits(hitsInGPU,hit1_7,hit2_0) ||checkHits(hitsInGPU,hit1_7,hit2_1) ||checkHits(hitsInGPU,hit1_7,hit2_2) ||checkHits(hitsInGPU,hit1_7,hit2_3) ||checkHits(hitsInGPU,hit1_7,hit2_4) ||checkHits(hitsInGPU,hit1_7,hit2_5) ||checkHits(hitsInGPU,hit1_7,hit2_6) ||checkHits(hitsInGPU,hit1_7,hit2_7) ||checkHits(hitsInGPU,hit1_7,hit2_8) ||checkHits(hitsInGPU,hit1_7,hit2_9);
-        short matched_8 = checkHits(hitsInGPU,hit1_8,hit2_0) ||checkHits(hitsInGPU,hit1_8,hit2_1) ||checkHits(hitsInGPU,hit1_8,hit2_2) ||checkHits(hitsInGPU,hit1_8,hit2_3) ||checkHits(hitsInGPU,hit1_8,hit2_4) ||checkHits(hitsInGPU,hit1_8,hit2_5) ||checkHits(hitsInGPU,hit1_8,hit2_6) ||checkHits(hitsInGPU,hit1_8,hit2_7) ||checkHits(hitsInGPU,hit1_8,hit2_8) ||checkHits(hitsInGPU,hit1_8,hit2_9);
-        short matched_9 = checkHits(hitsInGPU,hit1_9,hit2_0) ||checkHits(hitsInGPU,hit1_9,hit2_1) ||checkHits(hitsInGPU,hit1_9,hit2_2) ||checkHits(hitsInGPU,hit1_9,hit2_3) ||checkHits(hitsInGPU,hit1_9,hit2_4) ||checkHits(hitsInGPU,hit1_9,hit2_5) ||checkHits(hitsInGPU,hit1_9,hit2_6) ||checkHits(hitsInGPU,hit1_9,hit2_7) ||checkHits(hitsInGPU,hit1_9,hit2_8) ||checkHits(hitsInGPU,hit1_9,hit2_9);
+        //short matched_0 = checkHits(hit1_0,hit2_0) ||checkHits(hit1_0,hit2_1) ||checkHits(hit1_0,hit2_2) ||checkHits(hit1_0,hit2_3) ||checkHits(hit1_0,hit2_4) ||checkHits(hit1_0,hit2_5) ||checkHits(hit1_0,hit2_6) ||checkHits(hit1_0,hit2_7) ||checkHits(hit1_0,hit2_8) ||checkHits(hit1_0,hit2_9);
+        //short matched_1 = checkHits(hit1_1,hit2_0) ||checkHits(hit1_1,hit2_1) ||checkHits(hit1_1,hit2_2) ||checkHits(hit1_1,hit2_3) ||checkHits(hit1_1,hit2_4) ||checkHits(hit1_1,hit2_5) ||checkHits(hit1_1,hit2_6) ||checkHits(hit1_1,hit2_7) ||checkHits(hit1_1,hit2_8) ||checkHits(hit1_1,hit2_9);
+        //short matched_2 = checkHits(hit1_2,hit2_0) ||checkHits(hit1_2,hit2_1) ||checkHits(hit1_2,hit2_2) ||checkHits(hit1_2,hit2_3) ||checkHits(hit1_2,hit2_4) ||checkHits(hit1_2,hit2_5) ||checkHits(hit1_2,hit2_6) ||checkHits(hit1_2,hit2_7) ||checkHits(hit1_2,hit2_8) ||checkHits(hit1_2,hit2_9);
+        //short matched_3 = checkHits(hit1_3,hit2_0) ||checkHits(hit1_3,hit2_1) ||checkHits(hit1_3,hit2_2) ||checkHits(hit1_3,hit2_3) ||checkHits(hit1_3,hit2_4) ||checkHits(hit1_3,hit2_5) ||checkHits(hit1_3,hit2_6) ||checkHits(hit1_3,hit2_7) ||checkHits(hit1_3,hit2_8) ||checkHits(hit1_3,hit2_9);
+        //short matched_4 = checkHits(hit1_4,hit2_0) ||checkHits(hit1_4,hit2_1) ||checkHits(hit1_4,hit2_2) ||checkHits(hit1_4,hit2_3) ||checkHits(hit1_4,hit2_4) ||checkHits(hit1_4,hit2_5) ||checkHits(hit1_4,hit2_6) ||checkHits(hit1_4,hit2_7) ||checkHits(hit1_4,hit2_8) ||checkHits(hit1_4,hit2_9);
+        //short matched_5 = checkHits(hit1_5,hit2_0) ||checkHits(hit1_5,hit2_1) ||checkHits(hit1_5,hit2_2) ||checkHits(hit1_5,hit2_3) ||checkHits(hit1_5,hit2_4) ||checkHits(hit1_5,hit2_5) ||checkHits(hit1_5,hit2_6) ||checkHits(hit1_5,hit2_7) ||checkHits(hit1_5,hit2_8) ||checkHits(hit1_5,hit2_9);
+        //short matched_6 = checkHits(hit1_6,hit2_0) ||checkHits(hit1_6,hit2_1) ||checkHits(hit1_6,hit2_2) ||checkHits(hit1_6,hit2_3) ||checkHits(hit1_6,hit2_4) ||checkHits(hit1_6,hit2_5) ||checkHits(hit1_6,hit2_6) ||checkHits(hit1_6,hit2_7) ||checkHits(hit1_6,hit2_8) ||checkHits(hit1_6,hit2_9);
+        //short matched_7 = checkHits(hit1_7,hit2_0) ||checkHits(hit1_7,hit2_1) ||checkHits(hit1_7,hit2_2) ||checkHits(hit1_7,hit2_3) ||checkHits(hit1_7,hit2_4) ||checkHits(hit1_7,hit2_5) ||checkHits(hit1_7,hit2_6) ||checkHits(hit1_7,hit2_7) ||checkHits(hit1_7,hit2_8) ||checkHits(hit1_7,hit2_9);
+        //short matched_8 = checkHits(hit1_8,hit2_0) ||checkHits(hit1_8,hit2_1) ||checkHits(hit1_8,hit2_2) ||checkHits(hit1_8,hit2_3) ||checkHits(hit1_8,hit2_4) ||checkHits(hit1_8,hit2_5) ||checkHits(hit1_8,hit2_6) ||checkHits(hit1_8,hit2_7) ||checkHits(hit1_8,hit2_8) ||checkHits(hit1_8,hit2_9);
+        //short matched_9 = checkHits(hit1_9,hit2_0) ||checkHits(hit1_9,hit2_1) ||checkHits(hit1_9,hit2_2) ||checkHits(hit1_9,hit2_3) ||checkHits(hit1_9,hit2_4) ||checkHits(hit1_9,hit2_5) ||checkHits(hit1_9,hit2_6) ||checkHits(hit1_9,hit2_7) ||checkHits(hit1_9,hit2_8) ||checkHits(hit1_9,hit2_9);
+        short matched_0 = checkHits(hit1_0,hit2_0) ||checkHits(hit1_0,hit2_2); 
+        short matched_1 = checkHits(hit1_1,hit2_1) ||checkHits(hit1_1,hit2_3);
+        short matched_2 = checkHits(hit1_2,hit2_0) ||checkHits(hit1_2,hit2_2) ||checkHits(hit1_2,hit2_4);
+        short matched_3 = checkHits(hit1_3,hit2_1) ||checkHits(hit1_3,hit2_3) ||checkHits(hit1_3,hit2_5);
+        short matched_4 = checkHits(hit1_4,hit2_2) ||checkHits(hit1_4,hit2_4) ||checkHits(hit1_4,hit2_6);
+        short matched_5 = checkHits(hit1_5,hit2_3) ||checkHits(hit1_5,hit2_5) ||checkHits(hit1_5,hit2_7);
+        short matched_6 = checkHits(hit1_6,hit2_4) ||checkHits(hit1_6,hit2_6) ||checkHits(hit1_6,hit2_8);
+        short matched_7 = checkHits(hit1_7,hit2_5) ||checkHits(hit1_7,hit2_7) ||checkHits(hit1_7,hit2_9);
+        short matched_8 = checkHits(hit1_8,hit2_6) ||checkHits(hit1_8,hit2_8);
+        short matched_9 = checkHits(hit1_9,hit2_7) ||checkHits(hit1_9,hit2_9);
 
         if(matched_0+matched_1+matched_2+matched_3+matched_4+matched_5+matched_6+matched_7+matched_8+matched_9<8){continue;}
         return;
@@ -4195,7 +4221,7 @@ __global__ void createQuintupletsInGPU(struct SDL::modules& modulesInGPU, struct
 #ifdef CUT_VALUE_DEBUG
                 addQuintupletToMemory(quintupletsInGPU, innerTripletIndex, outerTripletIndex, lowerModule1, lowerModule2, lowerModule3, lowerModule4, lowerModule5, innerRadius, innerRadiusMin, innerRadiusMax, outerRadius, outerRadiusMin, outerRadiusMax, bridgeRadius, bridgeRadiusMin, bridgeRadiusMax, innerRadiusMin2S, innerRadiusMax2S, bridgeRadiusMin2S, bridgeRadiusMax2S, outerRadiusMin2S, outerRadiusMax2S, quintupletIndex);
 #else
-                addQuintupletToMemory(quintupletsInGPU, innerTripletIndex, outerTripletIndex, lowerModule1, lowerModule2, lowerModule3, lowerModule4, lowerModule5, innerRadius, outerRadius, quintupletIndex);
+                addQuintupletToMemory(quintupletsInGPU, innerTripletIndex, outerTripletIndex, lowerModule1, lowerModule2, lowerModule3, lowerModule4, lowerModule5, innerRadius, outerRadius, quintupletIndex,0);
 #endif
             }
         }
@@ -4252,7 +4278,7 @@ __global__ void createQuintupletsFromInnerInnerLowerModule(SDL::modules& modules
 #ifdef CUT_VALUE_DEBUG
                 addQuintupletToMemory(quintupletsInGPU, innerTripletIndex, outerTripletIndex, lowerModule1, lowerModule2, lowerModule3, lowerModule4, lowerModule5, innerRadius, innerRadiusMin, innerRadiusMax, outerRadius, outerRadiusMin, outerRadiusMax, bridgeRadius, bridgeRadiusMin, bridgeRadiusMax, innerRadiusMin2S, innerRadiusMax2S, bridgeRadiusMin2S, bridgeRadiusMax2S, outerRadiusMin2S, outerRadiusMax2S, quintupletIndex);
 #else
-                addQuintupletToMemory(quintupletsInGPU, innerTripletIndex, outerTripletIndex, lowerModule1, lowerModule2, lowerModule3, lowerModule4, lowerModule5, innerRadius, outerRadius, quintupletIndex);
+                addQuintupletToMemory(quintupletsInGPU, innerTripletIndex, outerTripletIndex, lowerModule1, lowerModule2, lowerModule3, lowerModule4, lowerModule5, innerRadius, outerRadius, quintupletIndex,0);
 #endif
 
             }
