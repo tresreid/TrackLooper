@@ -36,6 +36,10 @@ namespace SDL
         unsigned int* nTrackCandidatespT2;
         unsigned int* nTrackCandidatespT3;
         unsigned int* nTrackCandidatesT5;
+        bool* isDup;
+        float* pt;
+        float* eta;
+        float* phi;
 
         trackCandidates();
         ~trackCandidates();
@@ -49,7 +53,8 @@ namespace SDL
 
     void createTrackCandidatesInExplicitMemory(struct trackCandidates& trackCandidatesInGPU, unsigned int maxTrackCandidates, unsigned int maxPixelTrackCandidates, unsigned int nLowerModules, unsigned int nEligibleModules);
     
-    CUDA_DEV void addTrackCandidateToMemory(struct trackCandidates& trackCandidatesInGPU, short trackCandidateType, unsigned int innerTrackletIndex, unsigned int outerTrackletIndex, unsigned int trackCandidateIndex);
+    CUDA_DEV void rmTrackCandidateToMemory(struct trackCandidates& trackCandidatesInGPU, unsigned int trackCandidateIndex);
+    CUDA_DEV void addTrackCandidateToMemory(struct trackCandidates& trackCandidatesInGPU, short trackCandidateType, unsigned int innerTrackletIndex, unsigned int outerTrackletIndex, unsigned int trackCandidateIndex, float pt, float eta, float phi);
    
     CUDA_DEV bool runTrackCandidateDefaultAlgoTwoTracklets(struct tracklets& trackletsInGPU, struct triplets& tripletsInGPU, unsigned int innerTrackletIndex, unsigned int outerTrackletIndex, short& trackCandidateType);
 

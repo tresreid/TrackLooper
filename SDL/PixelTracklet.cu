@@ -17,12 +17,16 @@ void SDL::createPixelTrackletsInUnifiedMemory(struct pixelTracklets& pixelTrackl
     pixelTrackletsInGPU.nPixelTracklets = (unsigned int*)cms::cuda::allocate_managed(sizeof(unsigned int),stream);
     pixelTrackletsInGPU.zOut = (float*)cms::cuda::allocate_managed(maxPixelTracklets * sizeof(float) * 4,stream);
     pixelTrackletsInGPU.betaIn = (float*)cms::cuda::allocate_managed(maxPixelTracklets * sizeof(float) * 3,stream);
+    pixelTrackletsInGPU.isDup = (bool*)cms::cuda::allocate_managed(maxPixelTracklets * sizeof(bool),stream);
+    pixelTrackletsInGPU.pt = (float*)cms::cuda::allocate_managed(maxPixelTracklets * sizeof(float)*5,stream);
 #else
     cudaMallocManaged(&pixelTrackletsInGPU.segmentIndices, 2 * maxPixelTracklets * sizeof(unsigned int));
     cudaMallocManaged(&pixelTrackletsInGPU.lowerModuleIndices, 2 * maxPixelTracklets * sizeof(unsigned int));
     cudaMallocManaged(&pixelTrackletsInGPU.nPixelTracklets, sizeof(unsigned int));
     cudaMallocManaged(&pixelTrackletsInGPU.zOut, maxPixelTracklets *4* sizeof(float));
     cudaMallocManaged(&pixelTrackletsInGPU.betaIn, maxPixelTracklets *3* sizeof(float));
+    cudaMallocManaged(&pixelTrackletsInGPU.isDup, maxPixelTracklets * sizeof(bool));
+    cudaMallocManaged(&pixelTrackletsInGPU.pt, maxPixelTracklets * 5*sizeof(float));
 
 #ifdef CUT_VALUE_DEBUG
     cudaMallocManaged(&pixelTrackletsInGPU.zLo, maxPixelTracklets * sizeof(float));
@@ -44,6 +48,10 @@ void SDL::createPixelTrackletsInUnifiedMemory(struct pixelTracklets& pixelTrackl
     pixelTrackletsInGPU.deltaPhi = pixelTrackletsInGPU.zOut + maxPixelTracklets * 3;
     pixelTrackletsInGPU.betaOut = pixelTrackletsInGPU.betaIn + maxPixelTracklets;
     pixelTrackletsInGPU.pt_beta = pixelTrackletsInGPU.betaIn + maxPixelTracklets * 2;
+    pixelTrackletsInGPU.eta = pixelTrackletsInGPU.pt + maxPixelTracklets;
+    pixelTrackletsInGPU.phi = pixelTrackletsInGPU.pt + maxPixelTracklets * 2;
+    pixelTrackletsInGPU.eta_pix = pixelTrackletsInGPU.pt + maxPixelTracklets *3;
+    pixelTrackletsInGPU.phi_pix = pixelTrackletsInGPU.pt + maxPixelTracklets * 4;
 
     cudaMemset(pixelTrackletsInGPU.nPixelTracklets, 0, sizeof(unsigned int));
 }
@@ -60,6 +68,8 @@ void SDL::createPixelTrackletsInExplicitMemory(struct pixelTracklets& pixelTrack
     pixelTrackletsInGPU.nPixelTracklets = (unsigned int*)cms::cuda::allocate_device(dev, sizeof(unsigned int),stream);
     pixelTrackletsInGPU.zOut = (float*)cms::cuda::allocate_device(dev, maxPixelTracklets * sizeof(float) * 4,stream);
     pixelTrackletsInGPU.betaIn = (float*)cms::cuda::allocate_device(dev, maxPixelTracklets * sizeof(float) * 3,stream);
+    pixelTrackletsInGPU.isDup = (bool*)cms::cuda::allocate_device(dev, maxPixelTracklets * sizeof(bool),stream);
+    pixelTrackletsInGPU.pt = (float*)cms::cuda::allocate_device(dev, maxPixelTracklets * sizeof(float)*5,stream);
 
 #else
     cudaMalloc(&pixelTrackletsInGPU.segmentIndices, 2 * maxPixelTracklets * sizeof(unsigned int));
@@ -67,12 +77,18 @@ void SDL::createPixelTrackletsInExplicitMemory(struct pixelTracklets& pixelTrack
     cudaMalloc(&pixelTrackletsInGPU.nPixelTracklets, sizeof(unsigned int));
     cudaMalloc(&pixelTrackletsInGPU.zOut, maxPixelTracklets *4* sizeof(float));
     cudaMalloc(&pixelTrackletsInGPU.betaIn, maxPixelTracklets *3* sizeof(float));
+    cudaMalloc(&pixelTrackletsInGPU.isDup, maxPixelTracklets * sizeof(bool));
+    cudaMalloc(&pixelTrackletsInGPU.pt, maxPixelTracklets * sizeof(float)*5);
 #endif
     pixelTrackletsInGPU.rtOut = pixelTrackletsInGPU.zOut + maxPixelTracklets;
     pixelTrackletsInGPU.deltaPhiPos = pixelTrackletsInGPU.zOut + maxPixelTracklets * 2;
     pixelTrackletsInGPU.deltaPhi = pixelTrackletsInGPU.zOut + maxPixelTracklets * 3;
     pixelTrackletsInGPU.betaOut = pixelTrackletsInGPU.betaIn + maxPixelTracklets;
     pixelTrackletsInGPU.pt_beta = pixelTrackletsInGPU.betaIn + maxPixelTracklets * 2;
+    pixelTrackletsInGPU.eta = pixelTrackletsInGPU.pt + maxPixelTracklets;
+    pixelTrackletsInGPU.phi = pixelTrackletsInGPU.pt + maxPixelTracklets * 2;
+    pixelTrackletsInGPU.eta_pix = pixelTrackletsInGPU.pt + maxPixelTracklets *3;
+    pixelTrackletsInGPU.phi_pix = pixelTrackletsInGPU.pt + maxPixelTracklets * 4;
 
     cudaMemset(pixelTrackletsInGPU.nPixelTracklets, 0, sizeof(unsigned int));
 }
@@ -81,7 +97,7 @@ void SDL::createPixelTrackletsInExplicitMemory(struct pixelTracklets& pixelTrack
 __device__ void SDL::addPixelTrackletToMemory(struct pixelTracklets& pixelTrackletsInGPU, unsigned int innerSegmentIndex, unsigned int outerSegmentIndex, unsigned int innerInnerLowerModuleIndex, unsigned int innerOuterLowerModuleIndex, unsigned int outerInnerLowerModuleIndex, unsigned int outerOuterLowerModuleIndex, float& zOut, float& rtOut, float& deltaPhiPos, float& deltaPhi, float& betaIn, float& betaOut, float pt_beta, float& zLo, float& zHi, float& rtLo, float& rtHi, float& zLoPointed, float&
         zHiPointed, float& sdlCut, float& betaInCut, float& betaOutCut, float& deltaBetaCut, float& kZ, unsigned int pixelTrackletIndex)
 #else
-__device__ void SDL::addPixelTrackletToMemory(struct pixelTracklets& pixelTrackletsInGPU, unsigned int innerSegmentIndex, unsigned int outerSegmentIndex, unsigned int innerInnerLowerModuleIndex, unsigned int innerOuterLowerModuleIndex, unsigned int outerInnerLowerModuleIndex, unsigned int outerOuterLowerModuleIndex, float& zOut, float& rtOut, float& deltaPhiPos, float& deltaPhi, float& betaIn, float& betaOut, float pt_beta, unsigned int pixelTrackletIndex)
+__device__ void SDL::addPixelTrackletToMemory(struct pixelTracklets& pixelTrackletsInGPU, unsigned int innerSegmentIndex, unsigned int outerSegmentIndex, unsigned int innerInnerLowerModuleIndex, unsigned int innerOuterLowerModuleIndex, unsigned int outerInnerLowerModuleIndex, unsigned int outerOuterLowerModuleIndex, float& zOut, float& rtOut, float& deltaPhiPos, float& deltaPhi, float& betaIn, float& betaOut, float pt_beta, unsigned int pixelTrackletIndex,float pt, float eta, float phi, float eta_pix, float phi_pix)
 #endif
 {
     pixelTrackletsInGPU.segmentIndices[2 * pixelTrackletIndex] = innerSegmentIndex;
@@ -97,6 +113,12 @@ __device__ void SDL::addPixelTrackletToMemory(struct pixelTracklets& pixelTrackl
     pixelTrackletsInGPU.betaIn[pixelTrackletIndex] = betaIn;
     pixelTrackletsInGPU.betaOut[pixelTrackletIndex] = betaOut;
     pixelTrackletsInGPU.pt_beta[pixelTrackletIndex] = pt_beta;
+    pixelTrackletsInGPU.isDup[pixelTrackletIndex] = 0;
+    pixelTrackletsInGPU.pt[pixelTrackletIndex] = pt;
+    pixelTrackletsInGPU.eta[pixelTrackletIndex] = eta;
+    pixelTrackletsInGPU.phi[pixelTrackletIndex] = phi;
+    pixelTrackletsInGPU.eta_pix[pixelTrackletIndex] = eta_pix;
+    pixelTrackletsInGPU.phi_pix[pixelTrackletIndex] = phi_pix;
 
 #ifdef CUT_VALUE_DEBUG
     pixelTrackletsInGPU.zLo[pixelTrackletIndex] = zLo;
@@ -113,7 +135,7 @@ __device__ void SDL::addPixelTrackletToMemory(struct pixelTracklets& pixelTrackl
 #endif
 
 }
-__device__ void SDL::rmPixelTrackletToMemory(struct pixelTracklets& pixelTrackletsInGPU, unsigned int innerSegmentIndex, unsigned int outerSegmentIndex, unsigned int innerInnerLowerModuleIndex, unsigned int innerOuterLowerModuleIndex, unsigned int outerInnerLowerModuleIndex, unsigned int outerOuterLowerModuleIndex, float& zOut, float& rtOut, float& deltaPhiPos, float& deltaPhi, float& betaIn, float& betaOut, float pt_beta, unsigned int pixelTrackletIndex)
+__device__ void SDL::rmPixelTrackletToMemory(struct pixelTracklets& pixelTrackletsInGPU, unsigned int pixelTrackletIndex)
 {
     pixelTrackletsInGPU.segmentIndices[2 * pixelTrackletIndex] = 0;//innerSegmentIndex;
     pixelTrackletsInGPU.segmentIndices[2 * pixelTrackletIndex + 1] = 0;//outerSegmentIndex;
@@ -128,6 +150,7 @@ __device__ void SDL::rmPixelTrackletToMemory(struct pixelTracklets& pixelTrackle
     pixelTrackletsInGPU.betaIn[pixelTrackletIndex] = 0;//betaIn;
     pixelTrackletsInGPU.betaOut[pixelTrackletIndex] = 0;//betaOut;
     pixelTrackletsInGPU.pt_beta[pixelTrackletIndex] = 0;//pt_beta;
+    pixelTrackletsInGPU.isDup[pixelTrackletIndex] = 1;//pt_beta;
 
 #ifdef CUT_VALUE_DEBUG
     pixelTrackletsInGPU.zLo[pixelTrackletIndex] = 0;//zLo;
@@ -155,12 +178,20 @@ void SDL::pixelTracklets::freeMemoryCache()
     cms::cuda::free_device(dev,zOut);
     cms::cuda::free_device(dev,betaIn);
     cms::cuda::free_device(dev,nPixelTracklets);
+    cms::cuda::free_device(dev,isDup);
+    cms::cuda::free_device(dev,pt);
+//    cms::cuda::free_device(dev,eta);
+//    cms::cuda::free_device(dev,phi);
 #else
     cms::cuda::free_managed(segmentIndices);
     cms::cuda::free_managed(lowerModuleIndices);
     cms::cuda::free_managed(zOut);
     cms::cuda::free_managed(betaIn);
     cms::cuda::free_managed(nPixelTracklets);
+    cms::cuda::free_managed(isDup);
+    cms::cuda::free_managed(pt);
+//    cms::cuda::free_managed(eta);
+//    cms::cuda::free_managed(phi);
 #endif
 }
 
@@ -171,6 +202,10 @@ void SDL::pixelTracklets::freeMemory()
     cudaFree(nPixelTracklets);
     cudaFree(zOut);
     cudaFree(betaIn);
+    cudaFree(isDup);
+    cudaFree(pt);
+//    cudaFree(eta);
+//    cudaFree(phi);
 #ifdef CUT_VALUE_DEBUG
     cudaFree(zLo);
     cudaFree(zHi);
@@ -199,6 +234,10 @@ SDL::pixelTracklets::pixelTracklets()
     betaIn = nullptr;
     betaOut = nullptr;
     pt_beta = nullptr;
+    isDup = nullptr;
+    pt = nullptr;
+    eta = nullptr;
+    phi = nullptr;
 #ifdef CUT_VALUE_DEBUG
     zLo = nullptr;
     zHi = nullptr;

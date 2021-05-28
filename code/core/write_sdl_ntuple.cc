@@ -509,6 +509,7 @@ void fillTrackCandidateOutputBranches_v1(SDL::Event& event)
         for (unsigned int jdx = 0; jdx < nTrackCandidates; jdx++)
         {
             unsigned int trackCandidateIndex = modulesInGPU.trackCandidateModuleIndices[idx] + jdx; // this line causes the issue
+            if(trackCandidatesInGPU.isDup[trackCandidateIndex]){continue;}
             short trackCandidateType = trackCandidatesInGPU.trackCandidateType[trackCandidateIndex];
             unsigned int innerTrackletIdx = trackCandidatesInGPU.objectIndices[2 * trackCandidateIndex];
             unsigned int outerTrackletIdx = trackCandidatesInGPU.objectIndices[2 * trackCandidateIndex + 1];
@@ -524,6 +525,8 @@ void fillTrackCandidateOutputBranches_v1(SDL::Event& event)
 
             if (trackCandidateType == 3) // pT2
             {
+                //printf("innerTrackletIdx: %u\n",innerTrackletIdx);
+                if(pixelTrackletsInGPU.isDup[innerTrackletIdx]){continue;}
                 innerTrackletInnerSegmentIndex = pixelTrackletsInGPU.segmentIndices[2 * innerTrackletIdx];
                 innerTrackletOuterSegmentIndex = pixelTrackletsInGPU.segmentIndices[2 * innerTrackletIdx + 1];
                 outerTrackletOuterSegmentIndex = pixelTrackletsInGPU.segmentIndices[2 * outerTrackletIdx + 1];
@@ -549,6 +552,7 @@ void fillTrackCandidateOutputBranches_v1(SDL::Event& event)
 #ifdef DO_QUINTUPLET
             if (trackCandidateType == 4) // T5
             {
+            if(quintupletsInGPU.isDup[innerTrackletIdx]){continue;}
             unsigned int innerTrackletIndex = quintupletsInGPU.tripletIndices[2 * innerTrackletIdx];
             unsigned int outerTrackletIndex = quintupletsInGPU.tripletIndices[2 * innerTrackletIdx + 1];
              innerTrackletInnerSegmentIndex = tripletsInGPU.segmentIndices[2 * innerTrackletIndex];
