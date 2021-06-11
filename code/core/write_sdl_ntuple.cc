@@ -104,6 +104,7 @@ void createLowerLevelOutputBranches()
     ana.tx->createBranch<vector<float>>("t5_pt");
     ana.tx->createBranch<vector<float>>("t5_eta");
     ana.tx->createBranch<vector<float>>("t5_phi");
+    ana.tx->createBranch<vector<int>>("t5_foundDuplicate");
 //#endif
     //pLS
     ana.tx->createBranch<vector<int>>("sim_pLS_matched");
@@ -120,8 +121,13 @@ void createLowerLevelOutputBranches()
     ana.tx->createBranch<vector<float>>("pT3_pt");
     ana.tx->createBranch<vector<float>>("pT3_eta");
     ana.tx->createBranch<vector<float>>("pT3_phi");
+    ana.tx->createBranch<vector<float>>("pT3_eta_2");
+    ana.tx->createBranch<vector<float>>("pT3_phi_2");
     ana.tx->createBranch<vector<int>>("pT3_isFake");
     ana.tx->createBranch<vector<int>>("pT3_isDuplicate");
+    ana.tx->createBranch<vector<int>>("pT3_foundDuplicate");
+    ana.tx->createBranch<vector<vector<int>>>("pT3_matched_simIdx");
+    ana.tx->createBranch<vector<vector<int>>>("pT3_hitIdxs");
 
 #ifdef CUT_VALUE_DEBUG
     createQuadrupletCutValueBranches();
@@ -496,9 +502,9 @@ void fillTrackCandidateOutputBranches_v1(SDL::Event& event)
 
         unsigned int nTrackCandidates = trackCandidatesInGPU.nTrackCandidates[idx];
 
-        if (idx == *(modulesInGPU.nLowerModules) and nTrackCandidates > 5000000)
+        if (idx == *(modulesInGPU.nLowerModules) and nTrackCandidates > N_MAX_PIXEL_TRACK_CANDIDATES_PER_MODULE)
         {
-            nTrackCandidates = 5000000;
+            nTrackCandidates = N_MAX_PIXEL_TRACK_CANDIDATES_PER_MODULE;
         }
 
         if (idx < *(modulesInGPU.nLowerModules) and nTrackCandidates > 50000)
@@ -538,6 +544,7 @@ void fillTrackCandidateOutputBranches_v1(SDL::Event& event)
 
             if (trackCandidateType == 5) //pT3
             {
+                if(pixelTripletsInGPU.isDup[innerTrackletIdx]){continue;}
                 innerTrackletInnerSegmentIndex = pixelTripletsInGPU.pixelSegmentIndices[innerTrackletIdx];
                 innerTrackletOuterSegmentIndex = tripletsInGPU.segmentIndices[2 * pixelTripletsInGPU.tripletIndices[innerTrackletIdx]]; //lower segment of the outer triplet
                 
@@ -596,7 +603,7 @@ void fillTrackCandidateOutputBranches_v1(SDL::Event& event)
                 betaIn_out = trackletsInGPU.betaIn[outerTrackletIdx];
                 betaOut_out = trackletsInGPU.betaOut[outerTrackletIdx];
             }
-            else if (trackCandidateType == 5) // pT2T4
+            else if (trackCandidateType == 7) // pT2T4
             {
                 innerTrackletInnerSegmentIndex = pixelTrackletsInGPU.segmentIndices[2 * innerTrackletIdx];
                 innerTrackletOuterSegmentIndex = pixelTrackletsInGPU.segmentIndices[2 * innerTrackletIdx + 1];
@@ -1188,6 +1195,7 @@ void fillQuintupletOutputBranches(SDL::Event& event)
     std::vector<float> t5_pt;
     std::vector<float> t5_eta;
     std::vector<float> t5_phi;
+    std::vector<int> t5_foundDuplicate;
 
 #ifdef CUT_VALUE_DEBUG
     std::vector<float> t5_innerRadius;
@@ -1230,6 +1238,8 @@ void fillQuintupletOutputBranches(SDL::Event& event)
         for(unsigned int jdx = 0; jdx < nQuintuplets; jdx++)
         {
             unsigned int quintupletIndex = modulesInGPU.quintupletModuleIndices[idx] + jdx;
+            //if(quintupletsInGPU.isDup[quintupletIndex]){continue;}
+            t5_foundDuplicate.emplace_back(quintupletsInGPU.isDup[quintupletIndex]);
             unsigned int innerTripletIndex = quintupletsInGPU.tripletIndices[2 * quintupletIndex];
             unsigned int outerTripletIndex = quintupletsInGPU.tripletIndices[2 * quintupletIndex + 1];
 
@@ -1408,6 +1418,7 @@ void fillQuintupletOutputBranches(SDL::Event& event)
     ana.tx->setBranch<vector<float>>("t5_pt", t5_pt);
     ana.tx->setBranch<vector<float>>("t5_eta", t5_eta);
     ana.tx->setBranch<vector<float>>("t5_phi", t5_phi);
+    ana.tx->setBranch<vector<int>>("t5_foundDuplicate", t5_foundDuplicate);
 #ifdef CUT_VALUE_DEBUG
     ana.tx->setBranch<vector<vector<float>>>("t5_matched_pt",t5_simpt);
 
@@ -1449,6 +1460,10 @@ void fillPixelTripletOutputBranches(SDL::Event& event)
     std::vector<float> pT3_pt;
     std::vector<float> pT3_eta;
     std::vector<float> pT3_phi;
+    std::vector<float> pT3_eta_2;
+    std::vector<float> pT3_phi_2;
+    std::vector<int> pT3_foundDuplicate;
+    std::vector<vector<int>> pT3_hitIdxs;
 
 #ifdef CUT_VALUE_DEBUG
     std::vector<float> pT3_pixelRadius;
@@ -1458,12 +1473,17 @@ void fillPixelTripletOutputBranches(SDL::Event& event)
     std::vector<std::vector<float>> pT3_simpt;
 #endif
 
-    const unsigned int N_MAX_PIXEL_TRIPLETS = 3000000;
+    const unsigned int N_MAX_PIXEL_TRIPLETS = 250000;
 
     unsigned int nPixelTriplets = std::min(*(pixelTripletsInGPU.nPixelTriplets), N_MAX_PIXEL_TRIPLETS);
 
     for(unsigned int jdx = 0; jdx < nPixelTriplets; jdx++)
     {
+//        if(pixelTripletsInGPU.isDup[jdx]){continue;}
+        pT3_foundDuplicate.push_back(pixelTripletsInGPU.isDup[jdx]);       
+//        printf("%f %f\n",pixelTripletsInGPU.eta[jdx],pixelTripletsInGPU.phi[jdx]);
+        pT3_eta_2.push_back(pixelTripletsInGPU.eta[jdx]);       
+        pT3_phi_2.push_back(pixelTripletsInGPU.phi[jdx]);       
         unsigned int pixelSegmentIndex = pixelTripletsInGPU.pixelSegmentIndices[jdx];
         unsigned int tripletIndex = pixelTripletsInGPU.tripletIndices[jdx];
         
@@ -1499,6 +1519,7 @@ void fillPixelTripletOutputBranches(SDL::Event& event)
             (int) hitsInGPU.idxs[tripletOuterMDLowerHitIndex],
             (int) hitsInGPU.idxs[tripletOuterMDUpperHitIndex]
         };
+        pT3_hitIdxs.emplace_back(hit_idxs);
 
         std::vector<int> hit_types;
         hit_types.push_back(0);
@@ -1621,6 +1642,11 @@ void fillPixelTripletOutputBranches(SDL::Event& event)
     ana.tx->setBranch<vector<float>>("pT3_pt", pT3_pt);
     ana.tx->setBranch<vector<float>>("pT3_eta", pT3_eta);
     ana.tx->setBranch<vector<float>>("pT3_phi", pT3_phi);
+    ana.tx->setBranch<vector<float>>("pT3_eta_2", pT3_eta_2);
+    ana.tx->setBranch<vector<float>>("pT3_phi_2", pT3_phi_2);
+    ana.tx->setBranch<vector<int>>("pT3_foundDuplicate", pT3_foundDuplicate);
+    ana.tx->setBranch<vector<vector<int>>>("pT3_matched_simIdx", pT3_matched_simIdx);
+    ana.tx->setBranch<vector<vector<int>>>("pT3_hitIdxs", pT3_hitIdxs);
 #ifdef CUT_VALUE_DEBUG
     ana.tx->setBranch<vector<vector<float>>>("pT3_matched_pt", pT3_simpt);
     ana.tx->setBranch<vector<float>>("pT3_pixelRadius", pT3_pixelRadius);
@@ -1784,6 +1810,7 @@ void fillPixelQuadrupletOutputBranches(SDL::Event& event)
     for(unsigned int jdx = 0; jdx < nPixelTracklets; jdx++)
     {
         unsigned int trackletIndex = jdx;
+//        if(pixelTrackletsInGPU.isDup[trackletIndex]){continue;}
         unsigned int innerSegmentIndex = pixelTrackletsInGPU.segmentIndices[2 * trackletIndex];
         unsigned int outerSegmentIndex = pixelTrackletsInGPU.segmentIndices[2 * trackletIndex + 1];
         float betaIn = pixelTrackletsInGPU.betaIn[trackletIndex];

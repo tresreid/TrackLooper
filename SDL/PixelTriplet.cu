@@ -8,6 +8,8 @@ SDL::pixelTriplets::pixelTriplets()
     nPixelTriplets = nullptr;
     pixelRadius = nullptr;
     tripletRadius = nullptr;
+    pt = nullptr;
+    isDup = nullptr;
 #ifdef CUT_VALUE_DEBUG
     pixelRadiusError = nullptr;
 #endif
@@ -20,6 +22,8 @@ void SDL::pixelTriplets::freeMemory()
     cudaFree(nPixelTriplets);
     cudaFree(pixelRadius);
     cudaFree(tripletRadius);
+    cudaFree(pt);
+    cudaFree(isDup);
 #ifdef CUT_VALUE_DEBUG
     cudaFree(pixelRadiusError);
 #endif
@@ -36,10 +40,16 @@ void SDL::createPixelTripletsInUnifiedMemory(struct pixelTriplets& pixelTriplets
     cudaMallocManaged(&pixelTripletsInGPU.nPixelTriplets, sizeof(unsigned int));
     cudaMallocManaged(&pixelTripletsInGPU.pixelRadius, maxPixelTriplets * sizeof(float));
     cudaMallocManaged(&pixelTripletsInGPU.tripletRadius, maxPixelTriplets * sizeof(float));
+    cudaMallocManaged(&pixelTripletsInGPU.pt, maxPixelTriplets * 5*sizeof(float));
+    cudaMallocManaged(&pixelTripletsInGPU.isDup, maxPixelTriplets * sizeof(bool));
 #ifdef CUT_VALUE_DEBUG
     cudaMallocManaged(&pixelTripletsInGPU.pixelRadiusError, maxPixelTriplets * sizeof(float));
 #endif
     cudaMemset(pixelTripletsInGPU.nPixelTriplets, 0, sizeof(unsigned int));
+    pixelTripletsInGPU.eta = pixelTripletsInGPU.pt + maxPixelTriplets;
+    pixelTripletsInGPU.phi = pixelTripletsInGPU.pt + maxPixelTriplets * 2;
+    pixelTripletsInGPU.eta_pix = pixelTripletsInGPU.pt + maxPixelTriplets *3;
+    pixelTripletsInGPU.phi_pix = pixelTripletsInGPU.pt + maxPixelTriplets * 4;
 }
 
 void SDL::createPixelTripletsInExplicitMemory(struct pixelTriplets& pixelTripletsInGPU, unsigned int maxPixelTriplets)
@@ -49,25 +59,41 @@ void SDL::createPixelTripletsInExplicitMemory(struct pixelTriplets& pixelTriplet
     cudaMalloc(&pixelTripletsInGPU.nPixelTriplets, sizeof(unsigned int));
     cudaMalloc(&pixelTripletsInGPU.pixelRadius, maxPixelTriplets * sizeof(float));
     cudaMalloc(&pixelTripletsInGPU.tripletRadius, maxPixelTriplets * sizeof(float));
+    cudaMalloc(&pixelTripletsInGPU.pt, maxPixelTriplets * 5*sizeof(float));
+    cudaMalloc(&pixelTripletsInGPU.isDup, maxPixelTriplets * sizeof(bool));
 
     cudaMemset(pixelTripletsInGPU.nPixelTriplets, 0, sizeof(unsigned int));
+    pixelTripletsInGPU.eta = pixelTripletsInGPU.pt + maxPixelTriplets;
+    pixelTripletsInGPU.phi = pixelTripletsInGPU.pt + maxPixelTriplets * 2;
+    pixelTripletsInGPU.eta_pix = pixelTripletsInGPU.pt + maxPixelTriplets *3;
+    pixelTripletsInGPU.phi_pix = pixelTripletsInGPU.pt + maxPixelTriplets * 4;
 
 }
 
 #ifdef CUT_VALUE_DEBUG
 __device__ void SDL::addPixelTripletToMemory(struct pixelTriplets& pixelTripletsInGPU, unsigned int pixelSegmentIndex, unsigned int tripletIndex, float pixelRadius, float pixelRadiusError, float tripletRadius, unsigned int pixelTripletIndex)
 #else
-__device__ void SDL::addPixelTripletToMemory(struct pixelTriplets& pixelTripletsInGPU, unsigned int pixelSegmentIndex, unsigned int tripletIndex, float pixelRadius, float tripletRadius, unsigned int pixelTripletIndex)
+__device__ void SDL::addPixelTripletToMemory(struct pixelTriplets& pixelTripletsInGPU, unsigned int pixelSegmentIndex, unsigned int tripletIndex, float pixelRadius, float tripletRadius, unsigned int pixelTripletIndex,float pt, float eta, float phi, float eta_pix, float phi_pix)
 #endif
 {
     pixelTripletsInGPU.pixelSegmentIndices[pixelTripletIndex] = pixelSegmentIndex;
     pixelTripletsInGPU.tripletIndices[pixelTripletIndex] = tripletIndex;
     pixelTripletsInGPU.pixelRadius[pixelTripletIndex] = pixelRadius;
     pixelTripletsInGPU.tripletRadius[pixelTripletIndex] = tripletRadius;
+    pixelTripletsInGPU.pt[pixelTripletIndex] = pt;
+    pixelTripletsInGPU.eta[pixelTripletIndex] = eta;
+    pixelTripletsInGPU.phi[pixelTripletIndex] = phi;
+    pixelTripletsInGPU.eta_pix[pixelTripletIndex] = eta_pix;
+    pixelTripletsInGPU.phi_pix[pixelTripletIndex] = phi_pix;
+    pixelTripletsInGPU.isDup[pixelTripletIndex] = 0;
 
 #ifdef CUT_VALUE_DEBUG
     pixelTripletsInGPU.pixelRadiusError[pixelTripletIndex] = pixelRadiusError;
 #endif
+}
+__device__ void SDL::rmPixelTripletToMemory(struct pixelTriplets& pixelTripletsInGPU,unsigned int pixelTripletIndex)
+{
+    pixelTripletsInGPU.isDup[pixelTripletIndex] = 1;
 }
 
 __device__ bool SDL::runPixelTripletDefaultAlgo(struct modules& modulesInGPU, struct hits& hitsInGPU, struct miniDoublets& mdsInGPU, struct segments& segmentsInGPU, struct triplets& tripletsInGPU, unsigned int& pixelSegmentIndex, unsigned int tripletIndex, float& pixelRadius, float& pixelRadiusError, float& tripletRadius)

@@ -24,14 +24,15 @@ SOFLAGS              = -g -shared --compiler-options -fPIC --cudart shared -arch
 PRINTFLAG            = -DAddObjects -DT4FromT3 #-DWarnings
 #FINALSTATE           = -DFINAL_T5 -DFINAL_pT3 #-DFINAL_pT2 #-DFINAL_T3T4 
 #FINALSTATE           = -DFINAL_pT2 #-DFINAL_T3T4 
-FINALSTATE           = -DFINAL_T5 -DFINAL_pT2 #-DFINAL_T3T4 
-DUPLICATES           = #-DDUP_TC -DDUP_pT2 -DDUP_T5 
+FINALSTATE           = -DFINAL_T5 #-DFINAL_T5 #-DFINAL_pT2 #-DFINAL_T3T4 
+#DUPLICATES           = -DDUP_TC #-DDUP_pT3 -DDUP_pT2 -DDUP_T5 
+DUPLICATES           = -DDUP_pT3 -DDUP_pT2 -DDUP_T5 #-DDUP_TC 
 MEMFLAG              =
 CACHEFLAG            =
 CUDALAUNCHFLAG       = -DNESTED_PARA 
 MEMFLAG_FLAGS        = -DExplicit_MD -DExplicit_Seg -DExplicit_Tracklet -DExplicit_Trips -DExplicit_Hit -DExplicit_Track -DExplicit_Module -DExplicit_T5 -DExplicit_PT3
 CACHEFLAG_FLAGS      = -DCACHE_ALLOC
-CUDALAUNCHFLAG_FLAGS = -DNEWGRID_MD -DNEWGRID_Seg -DNEWGRID_Trips -DNEWGRID_Tracklet -DNEWGRID_Pixel -DNEWGRID_Track -DNEWGRID_T5
+CUDALAUNCHFLAG_FLAGS = -DNEWGRID_MD -DNEWGRID_Seg -DNEWGRID_Trips -DNEWGRID_Tracklet -DNEWGRID_Pixel -DNEWGRID_Track -DNEWGRID_T5 -DNEWGRID_pT3
 
 #
 # how to make it 
