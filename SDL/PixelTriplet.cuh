@@ -38,6 +38,7 @@ namespace SDL
         float* phi;
         float* eta_pix;
         float* phi_pix;
+        float* score;
         bool* isDup;
 
         pixelTriplets();
@@ -53,7 +54,7 @@ namespace SDL
 #ifdef CUT_VALUE_DEBUG
     CUDA_DEV void addPixelTripletToMemory(struct pixelTriplets& pixelTripletsInGPU, unsigned int pixelSegmentIndex, unsigned int tripletIndex, float pixelRadius, float pixelRadiusError, float tripletRadius, unsigned int pixelTripletIndex);
 #else
-    CUDA_DEV void addPixelTripletToMemory(struct pixelTriplets& pixelTripletsInGPU, unsigned int pixelSegmentIndex, unsigned int tripletIndex, float pixelRadius, float tripletRadius, unsigned int pixelTripletIndex, float pt, float eta, float phi, float eta_pix, float phi_pix);
+    CUDA_DEV void addPixelTripletToMemory(struct pixelTriplets& pixelTripletsInGPU, unsigned int pixelSegmentIndex, unsigned int tripletIndex, float pixelRadius, float tripletRadius, unsigned int pixelTripletIndex, float pt, float eta, float phi, float eta_pix, float phi_pix, float score);
 #endif
 
     CUDA_DEV void rmPixelTripletToMemory(struct pixelTriplets& pixelTripletsInGPU, unsigned int pixelTripletIndex);
