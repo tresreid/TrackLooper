@@ -3058,7 +3058,7 @@ __device__ bool inline checkHitspT2(unsigned int ix, unsigned int jx,struct SDL:
         return false;
 }
 
-__device__ float scoreT5(struct SDL::hits& hitsInGPU, struct SDL::miniDoublets& mdsInGPU,struct SDL::segments& segmentsInGPU,struct SDL::triplets& tripletsInGPU, unsigned int innerTrip, unsigned int outerTrip)
+__device__ void scoreT5(struct SDL::modules& modulesInGPU, struct SDL::hits& hitsInGPU, struct SDL::miniDoublets& mdsInGPU,struct SDL::segments& segmentsInGPU,struct SDL::triplets& tripletsInGPU, unsigned int innerTrip, unsigned int outerTrip, float* scores)
 {
         int hits1[10] = {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
         hits1[0] = mdsInGPU.hitIndices[2*segmentsInGPU.mdIndices[2*tripletsInGPU.segmentIndices[2*innerTrip]]]; // inner triplet inner segment inner md inner hit
@@ -3071,39 +3071,135 @@ __device__ float scoreT5(struct SDL::hits& hitsInGPU, struct SDL::miniDoublets& 
         hits1[7] = mdsInGPU.hitIndices[2*segmentsInGPU.mdIndices[2*tripletsInGPU.segmentIndices[2*outerTrip+1]]+1]; // outer triplet outersegment inner md outer hit
         hits1[8] = mdsInGPU.hitIndices[2*segmentsInGPU.mdIndices[2*tripletsInGPU.segmentIndices[2*outerTrip+1]+1]]; // outer triplet outersegment outer md inner hit
         hits1[9] = mdsInGPU.hitIndices[2*segmentsInGPU.mdIndices[2*tripletsInGPU.segmentIndices[2*outerTrip+1]+1]+1]; // outer triplet outersegment outer md outer hit
-        float r1 = hitsInGPU.rts[hits1[0]];
-        float r2 = hitsInGPU.rts[hits1[9]];
-        float z1 = hitsInGPU.zs[hits1[0]];
-        float z2 = hitsInGPU.zs[hits1[9]];
-        float slope = (r2-r1)/(z2-z1);
 
+
+        unsigned int mod1 = hitsInGPU.moduleIndices[hits1[0]];
+//        unsigned int mod2 = hitsInGPU.moduleIndices[hits1[1]];
+        unsigned int mod3 = hitsInGPU.moduleIndices[hits1[2]];
+//        unsigned int mod4 = hitsInGPU.moduleIndices[hits1[3]];
+        SDL::ModuleLayerType type1 = modulesInGPU.moduleLayerType[mod1];
+//        SDL::ModuleLayerType type2 = modulesInGPU.moduleLayerType[mod2];
+        SDL::ModuleLayerType type3 = modulesInGPU.moduleLayerType[mod3];
+//        SDL::ModuleLayerType type4 = modulesInGPU.moduleLayerType[mod4];
+
+        float r1;
+        float r2;
+        float z1;
+        float z2;
+        float p1,p2;
+        if(type1 == 0){//lower hit is pixel
+         r1 = hitsInGPU.rts[hits1[0]];
+         z1 = hitsInGPU.zs[hits1[0]];
+         p1 = hits1[0];
+        }else{//upper hit is pixel
+         r1 = hitsInGPU.rts[hits1[1]];
+         z1 = hitsInGPU.zs[hits1[1]];
+         p1 = hits1[1];
+        }
+        if(type3==0){//lower hit is pixel
+         r2 = hitsInGPU.rts[hits1[2]];
+         z2 = hitsInGPU.zs[hits1[2]];
+         p2 = hits1[2];
+        }else{
+         r2 = hitsInGPU.rts[hits1[3]];
+         z2 = hitsInGPU.zs[hits1[3]];
+         p2 = hits1[3];
+        }
+        float slope = (z2-z1)/(r2-r1);
+
+        //printf("types %d %d %d %d\n",type1,type2,type3,type4);
+        //printf("types %u %u %u %u\n",mod1,mod2,mod3,mod4);
         float rsum=0;
         float zsum=0;
         float r2sum=0;
         float rzsum=0;
+        float rsumx=0;
+        float zsumx=0;
+        float r2sumx=0;
+        float rzsumx=0;
+        float rsumy=0;
+        float zsumy=0;
+        float r2sumy=0;
+        float rzsumy=0;
+        int npix=0;
+        int nstrip=0;
         for(int i=0;i <10; i++){
-          rsum += hitsInGPU.zs[hits1[i]];
-          zsum += hitsInGPU.rts[hits1[i]];
-          r2sum += hitsInGPU.zs[hits1[i]]*hitsInGPU.zs[hits1[i]];
-          rzsum += hitsInGPU.zs[hits1[i]]*hitsInGPU.rts[hits1[i]];
+          rsum += hitsInGPU.rts[hits1[i]];
+          zsum += hitsInGPU.zs[hits1[i]];
+          r2sum += hitsInGPU.rts[hits1[i]]*hitsInGPU.rts[hits1[i]];
+          rzsum += hitsInGPU.rts[hits1[i]]*hitsInGPU.zs[hits1[i]];
+          SDL::ModuleLayerType t1 = modulesInGPU.moduleLayerType[hitsInGPU.moduleIndices[hits1[i]]];
+          if(t1==0){
+            rsumx += hitsInGPU.rts[hits1[i]];
+            zsumx += hitsInGPU.zs[hits1[i]];
+            r2sumx += hitsInGPU.rts[hits1[i]]*hitsInGPU.rts[hits1[i]];
+            rzsumx += hitsInGPU.rts[hits1[i]]*hitsInGPU.zs[hits1[i]];
+            npix++;
+          }else{
+            rsumy += hitsInGPU.rts[hits1[i]];
+            zsumy += hitsInGPU.zs[hits1[i]];
+            r2sumy += hitsInGPU.rts[hits1[i]]*hitsInGPU.rts[hits1[i]];
+            rzsumy += hitsInGPU.rts[hits1[i]]*hitsInGPU.zs[hits1[i]];
+            nstrip++;
+          }
             
         }
         float slope2 = (10*rzsum - rsum*zsum)/(10*r2sum-rsum*rsum);
         float b = (r2sum*zsum-rsum*rzsum)/(r2sum*10-rsum*rsum);
+        float slope3 = (npix*rzsumx - rsumx*zsumx)/(npix*r2sumx-rsumx*rsumx);
+        float b1 = (r2sumx*zsumx-rsumx*rzsumx)/(r2sumx*npix-rsumx*rsumx);
+        float slope4 = (nstrip*rzsumy - rsumy*zsumy)/(nstrip*r2sumy-rsumy*rsumy);
+        float b2 = (r2sumy*zsumy-rsumy*rzsumy)/(r2sumy*nstrip-rsumy*rsumy);
         float score = 0;
         float score2 = 0;
+        float score3 = 0;
+        float score4 = 0;
+        float score5 = 0;
+        float score6 = 0;
+        float score7 = 0;
+        float score8 = 0;
+        float score9 = 0;
         for( int i=0; i <10; i++){
           float z = hitsInGPU.zs[hits1[i]];
-          float r = hitsInGPU.rts[hits1[i]];
-          float var = (slope*(z-z1) - (r-r1));// (1 um to cm)
-          float var2 = (slope2*(z)+b) - r;// (1 um to cm)
-          //score += (var*var)/1e-4;
-          score += abs(var);
-          score2 += abs(var2);
+          float r = hitsInGPU.rts[hits1[i]]; // cm
+          float var = (slope*(r-r1) - (z-z1));
+          //float novar = abs(slope*(r-r1) +z1);
+          float var2 = (slope2*(r)+b) - z;
+          float var3 = (slope3*(r)+b1) - z;
+          float var4 = (slope4*(r)+b2) - z;
+          //float novar3 = abs(slope3*(r)+b1);
+          float err2;
+          if(modulesInGPU.moduleLayerType[hitsInGPU.moduleIndices[hits1[i]]]==0){
+            err2 =0.0225;//(1.5mm)^2
+          }else{ err2 =25;}//(5cm)^2
+          score += (var*var)/(err2);
+          score2 += abs(var);
+          score3 += (var2*var2)/(err2);
+          //score2 += (var*var)/(err2+novar);
+          //score4 += (var*var)/(novar);
+          score4 += abs(var2);
+          //score6 += (var3*var3)/(err2+novar3);
+          score5 += (var3*var3)/(err2);
+          //score8 += (var3*var3)/(novar3);
+          score6 += abs(var3);
+          score7 += (var4*var4)/(err2);
+          score8 += abs(var4);
+     //     printf("%f %f %f %f\n",var*var,var2*var2,var3*var3,(var3*var3)/(err2));
         }
-        //printf("T5 score: %f %f %f %f\n",score,slope,score2,slope2);
-
-       return score2;
+//        printf("T5 score: %f %f %f %f %f %f %f %f %f\n",score,score2,score3,score4,score5,score6,score7,score8,score9);
+       scores[0] = slope3;
+       scores[1] = score;
+       scores[2] = score2;
+       scores[3] = score3;
+       scores[4] = score4;
+       scores[5] = score5;
+       scores[6] = score6;
+       scores[7] = score7;
+       scores[8] = score8;
+       scores[9] = score9;
+      scores[10] = p1;
+      scores[11] = p2;
+       //return {score,score2,slope};
 }
 __device__ bool inline checkHitsT5(unsigned int ix, unsigned int jx,struct SDL::miniDoublets& mdsInGPU, struct SDL::segments& segmentsInGPU, struct SDL::triplets& tripletsInGPU,struct SDL::quintuplets& quintupletsInGPU){
 //        printf("checking hits\n");
@@ -3147,7 +3243,7 @@ __device__ bool inline checkHitsT5(unsigned int ix, unsigned int jx,struct SDL::
           if(matched){nMatched++;}
         }
 
-        if(nMatched >= 6){return true;}
+        if(nMatched >= 7){return true;}
         return false;
 }
 __device__ bool inline checkHitsTC(unsigned int itrackCandidateIndex, unsigned int jtrackCandidateIndex,struct SDL::miniDoublets& mdsInGPU, struct SDL::segments& segmentsInGPU, struct SDL::triplets& tripletsInGPU,struct SDL::quintuplets& quintupletsInGPU, struct SDL::pixelTracklets& pixelTrackletsInGPU, struct SDL::pixelTriplets& pixelTripletsInGPU,struct SDL::trackCandidates& trackCandidatesInGPU){
@@ -4863,9 +4959,22 @@ __global__ void createQuintupletsInGPU(struct SDL::modules& modulesInGPU, struct
         //float eta = hitsInGPU.etas[mdsInGPU.hitIndices[2*segmentsInGPU.mdIndices[2*tripletsInGPU.segmentIndices[2*outerTripletIndex+1]+1]+1]]; // outer triplet outersegment outer md outer hit
         float pt = (innerRadius+outerRadius)*3.8*1.602/(2*100*5.39);//1.602e-19=q, 5.39e-19 kg*m/s =1 GeV  
 
-        float score = /*give first layer tracks a higher score*/(modulesInGPU.layers[lowerModule1])*scoreT5(hitsInGPU,mdsInGPU,segmentsInGPU,tripletsInGPU,innerTripletIndex,outerTripletIndex);
+       float scores[12]; 
+        /*give first layer tracks a higher score(modulesInGPU.layers[lowerModule1])*/scoreT5(modulesInGPU,hitsInGPU,mdsInGPU,segmentsInGPU,tripletsInGPU,innerTripletIndex,outerTripletIndex,scores);
+       //float score =  scores[0];
+       //float score2 = scores[1];
+       //float slope = scores[2];
+       //float score3 =scores[3];
+       //float score4 =scores[4];
+       //float score5 =scores[5];
+       //float score6 =scores[6];
+       //float score7 =scores[7];
+       //float score8 =scores[8];
+       //float score9 =scores[9];
+//        printf("%f %f %f %f %f %f %f %f %f %f\n",scores[0],scores[1],scores[2],scores[3],scores[4],scores[5],scores[6],scores[7],scores[8],scores[9]);
+       int layer = modulesInGPU.layers[lowerModule1];
 //        printf("T5 %e %e %e\n",pt,eta,phi);
-                addQuintupletToMemory(quintupletsInGPU, innerTripletIndex, outerTripletIndex, lowerModule1, lowerModule2, lowerModule3, lowerModule4, lowerModule5, innerRadius, outerRadius, quintupletIndex,0,pt,eta,phi,distance,score);
+                addQuintupletToMemory(quintupletsInGPU, innerTripletIndex, outerTripletIndex, lowerModule1, lowerModule2, lowerModule3, lowerModule4, lowerModule5, innerRadius, outerRadius, quintupletIndex,0,pt,eta,phi,distance,scores,layer);
 #endif
             }
         }

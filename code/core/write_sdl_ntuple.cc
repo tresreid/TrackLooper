@@ -102,6 +102,7 @@ void createLowerLevelOutputBranches()
 //#ifdef DO_QUINTUPLET
     //T5 - new kid
     ana.tx->createBranch<vector<int>>("sim_T5_matched");
+    ana.tx->createBranch<vector<int>>("t5_sim_count");
     ana.tx->createBranch<vector<vector<int>>>("sim_T5_types");
     ana.tx->createBranch<vector<int>>("t5_isFake");
     ana.tx->createBranch<vector<int>>("t5_isDuplicate");
@@ -113,7 +114,19 @@ void createLowerLevelOutputBranches()
     ana.tx->createBranch<vector<float>>("t5_phi_2");
     ana.tx->createBranch<vector<vector<int>>>("t5_hitIdxs");
     ana.tx->createBranch<vector<vector<int>>>("t5_matched_simIdx");
+    ana.tx->createBranch<vector<float>>("t5_slope");
     ana.tx->createBranch<vector<float>>("t5_score");
+    ana.tx->createBranch<vector<float>>("t5_score2");
+    ana.tx->createBranch<vector<float>>("t5_score3");
+    ana.tx->createBranch<vector<float>>("t5_score4");
+    ana.tx->createBranch<vector<float>>("t5_score5");
+    ana.tx->createBranch<vector<float>>("t5_score6");
+    ana.tx->createBranch<vector<float>>("t5_score7");
+    ana.tx->createBranch<vector<float>>("t5_score8");
+    ana.tx->createBranch<vector<float>>("t5_score9");
+    ana.tx->createBranch<vector<float>>("t5_p1");
+    ana.tx->createBranch<vector<float>>("t5_p2");
+    ana.tx->createBranch<vector<int>>("t5_layer");
 //#endif
     //pLS
     ana.tx->createBranch<vector<int>>("sim_pLS_matched");
@@ -1434,11 +1447,24 @@ void fillQuintupletOutputBranches(SDL::Event& event)
 
     // Did it match to track candidate?
     std::vector<int> sim_T5_matched(trk.sim_pt().size());
+    std::vector<int> t5_sim_count;
     std::vector<vector<int>> sim_T5_types(trk.sim_pt().size());
     std::vector<int> t5_isFake;
     std::vector<vector<int>> t5_matched_simIdx;
     std::vector<float> t5_pt;
     std::vector<float> t5_score;
+    std::vector<float> t5_score2;
+    std::vector<float> t5_score3;
+    std::vector<float> t5_score4;
+    std::vector<float> t5_score5;
+    std::vector<float> t5_score6;
+    std::vector<float> t5_score7;
+    std::vector<float> t5_score8;
+    std::vector<float> t5_score9;
+    std::vector<float> t5_p1;
+    std::vector<float> t5_p2;
+    std::vector<float> t5_slope;
+    std::vector<int> t5_layer;
     std::vector<float> t5_eta;
     std::vector<float> t5_phi;
     std::vector<int> t5_foundDuplicate;
@@ -1487,11 +1513,23 @@ void fillQuintupletOutputBranches(SDL::Event& event)
         for(unsigned int jdx = 0; jdx < nQuintuplets; jdx++)
         {
             unsigned int quintupletIndex = modulesInGPU.quintupletModuleIndices[idx] + jdx;
-            if(quintupletsInGPU.isDup[quintupletIndex]){continue;}
+            //if(quintupletsInGPU.isDup[quintupletIndex]){continue;}
             t5_foundDuplicate.emplace_back(quintupletsInGPU.isDup[quintupletIndex]);
             t5_eta_2.emplace_back(quintupletsInGPU.eta[quintupletIndex]);
             t5_phi_2.emplace_back(quintupletsInGPU.phi[quintupletIndex]);
             t5_score.emplace_back(quintupletsInGPU.score[quintupletIndex]);
+            t5_score2.emplace_back(quintupletsInGPU.score2[quintupletIndex]);
+            t5_score3.emplace_back(quintupletsInGPU.score3[quintupletIndex]);
+            t5_score4.emplace_back(quintupletsInGPU.score4[quintupletIndex]);
+            t5_score5.emplace_back(quintupletsInGPU.score5[quintupletIndex]);
+            t5_score6.emplace_back(quintupletsInGPU.score6[quintupletIndex]);
+            t5_score7.emplace_back(quintupletsInGPU.score7[quintupletIndex]);
+            t5_score8.emplace_back(quintupletsInGPU.score8[quintupletIndex]);
+            t5_score9.emplace_back(quintupletsInGPU.score9[quintupletIndex]);
+            t5_p1.emplace_back(quintupletsInGPU.p1[quintupletIndex]);
+            t5_p2.emplace_back(quintupletsInGPU.p2[quintupletIndex]);
+            t5_slope.emplace_back(quintupletsInGPU.slope[quintupletIndex]);
+            t5_layer.emplace_back(quintupletsInGPU.layer[quintupletIndex]);
             unsigned int innerTripletIndex = quintupletsInGPU.tripletIndices[2 * quintupletIndex];
             unsigned int outerTripletIndex = quintupletsInGPU.tripletIndices[2 * quintupletIndex + 1];
 
@@ -1624,6 +1662,10 @@ void fillQuintupletOutputBranches(SDL::Event& event)
             layer_binaries.push_back(layer_binary);
 #endif
             std::vector<int> matched_sim_trk_idxs = matchedSimTrkIdxs(hit_idxs, hit_types);
+
+            //t5_sim_count.push_back(matched_sim_trk_idxs.back());
+            //printf("%d\n",t5_sim_count.back());
+            //matched_sim_trk_idxs.pop_back();
             for (auto &isimtrk : matched_sim_trk_idxs)
             {
                 sim_T5_matched[isimtrk]++;
@@ -1665,6 +1707,7 @@ void fillQuintupletOutputBranches(SDL::Event& event)
         t5_isDuplicate[i] = isDuplicate;
     }
     ana.tx->setBranch<vector<int>>("sim_T5_matched", sim_T5_matched);
+    ana.tx->setBranch<vector<int>>("t5_sim_count", t5_sim_count);
     ana.tx->setBranch<vector<vector<int>>>("sim_T5_types", sim_T5_types);
     ana.tx->setBranch<vector<int>>("t5_isFake", t5_isFake);
     ana.tx->setBranch<vector<int>>("t5_isDuplicate", t5_isDuplicate);
@@ -1677,6 +1720,18 @@ void fillQuintupletOutputBranches(SDL::Event& event)
     ana.tx->setBranch<vector<vector<int>>>("t5_matched_simIdx", t5_matched_simIdx);
     ana.tx->setBranch<vector<vector<int>>>("t5_hitIdxs", t5_hitIdxs);
     ana.tx->setBranch<vector<float>>("t5_score", t5_score);
+    ana.tx->setBranch<vector<float>>("t5_score2", t5_score2);
+    ana.tx->setBranch<vector<float>>("t5_score3", t5_score3);
+    ana.tx->setBranch<vector<float>>("t5_score4", t5_score4);
+    ana.tx->setBranch<vector<float>>("t5_score5", t5_score5);
+    ana.tx->setBranch<vector<float>>("t5_score6", t5_score6);
+    ana.tx->setBranch<vector<float>>("t5_score7", t5_score7);
+    ana.tx->setBranch<vector<float>>("t5_score8", t5_score8);
+    ana.tx->setBranch<vector<float>>("t5_score9", t5_score9);
+    ana.tx->setBranch<vector<float>>("t5_p1", t5_p1);
+    ana.tx->setBranch<vector<float>>("t5_p2", t5_p2);
+    ana.tx->setBranch<vector<float>>("t5_slope", t5_slope);
+    ana.tx->setBranch<vector<int>>("t5_layer", t5_layer);
 #ifdef CUT_VALUE_DEBUG
     ana.tx->setBranch<vector<vector<float>>>("t5_matched_pt",t5_simpt);
 

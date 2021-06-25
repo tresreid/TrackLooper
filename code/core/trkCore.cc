@@ -1025,6 +1025,7 @@ std::vector<int> matchedSimTrkIdxs(std::vector<int> hitidxs, std::vector<int> hi
     }
 
     std::vector<int> matched_sim_trk_idxs;
+    int max_count=0;
     for (auto& trkidx_perm : allperms)
     {
         std::vector<int> counts;
@@ -1040,8 +1041,9 @@ std::vector<int> matchedSimTrkIdxs(std::vector<int> hitidxs, std::vector<int> hi
             continue;
         if (counts[rawidx] > (((float)nhits_input) * 0.75))
             matched_sim_trk_idxs.push_back(trkidx);
+        if(counts[rawidx] > max_count){max_count=counts[rawidx];}
     }
-
+    //matched_sim_trk_idxs.push_back(max_count);
     return matched_sim_trk_idxs;
 }
 
