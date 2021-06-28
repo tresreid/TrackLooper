@@ -3105,7 +3105,8 @@ __device__ void scoreT5(struct SDL::modules& modulesInGPU, struct SDL::hits& hit
          z2 = hitsInGPU.zs[hits1[3]];
          p2 = hits1[3];
         }
-        float slope = (z2-z1)/(r2-r1);
+        float slope_barrel = (z2-z1)/(r2-r1);
+        float slope_endcap = (r2-r1)/(z2-z1);
 
         //printf("types %d %d %d %d\n",type1,type2,type3,type4);
         //printf("types %u %u %u %u\n",mod1,mod2,mod3,mod4);
@@ -3162,7 +3163,18 @@ __device__ void scoreT5(struct SDL::modules& modulesInGPU, struct SDL::hits& hit
         for( int i=0; i <10; i++){
           float z = hitsInGPU.zs[hits1[i]];
           float r = hitsInGPU.rts[hits1[i]]; // cm
-          float var = (slope*(r-r1) - (z-z1));
+          float slope = modulesInGPU.slopes[hitsInGPU.moduleIndices[hits1[i]]];
+          float subdet = modulesInGPU.subdets[hitsInGPU.moduleIndices[hits1[i]]];
+          float drdz = modulesInGPU.drdzs[hitsInGPU.moduleIndices[hits1[i]]];// this is what we want
+          float etax = hitsInGPU.etas[hits1[i]];
+          float phix = hitsInGPU.phis[hits1[i]];
+          //printf("%f %f %f %f %f\n",etax, hitsInGPU.rts[hits1[i]],hitsInGPU.zs[hits1[i]],slope,drdz);
+          float var;
+          if((subdet == 5) && (slope != 0.0)){// 5== barrel, ask for no tilt
+          var = (slope_barrel*(r-r1) - (z-z1));
+          }else{
+          var = (slope_endcap*(z-z1) - (r-r1));
+          }
           //float novar = abs(slope*(r-r1) +z1);
           float var2 = (slope2*(r)+b) - z;
           float var3 = (slope3*(r)+b1) - z;
@@ -3186,7 +3198,7 @@ __device__ void scoreT5(struct SDL::modules& modulesInGPU, struct SDL::hits& hit
           score8 += abs(var4);
      //     printf("%f %f %f %f\n",var*var,var2*var2,var3*var3,(var3*var3)/(err2));
         }
-//        printf("T5 score: %f %f %f %f %f %f %f %f %f\n",score,score2,score3,score4,score5,score6,score7,score8,score9);
+       // printf("T5 score: %f %f %f %f %f %f %f %f %f\n",score,score2,score3,score4,score5,score6,score7,score8,score9);
        scores[0] = slope3;
        scores[1] = score;
        scores[2] = score2;
@@ -3243,7 +3255,7 @@ __device__ bool inline checkHitsT5(unsigned int ix, unsigned int jx,struct SDL::
           if(matched){nMatched++;}
         }
 
-        if(nMatched >= 7){return true;}
+        if(nMatched >= 6){return true;}
         return false;
 }
 __device__ bool inline checkHitsTC(unsigned int itrackCandidateIndex, unsigned int jtrackCandidateIndex,struct SDL::miniDoublets& mdsInGPU, struct SDL::segments& segmentsInGPU, struct SDL::triplets& tripletsInGPU,struct SDL::quintuplets& quintupletsInGPU, struct SDL::pixelTracklets& pixelTrackletsInGPU, struct SDL::pixelTriplets& pixelTripletsInGPU,struct SDL::trackCandidates& trackCandidatesInGPU){
