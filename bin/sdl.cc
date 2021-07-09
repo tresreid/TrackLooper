@@ -316,7 +316,7 @@ void run_sdl()
     {
 
         std::cout << "event number = " << ana.looper.getCurrentEventIndex() << std::endl;
-
+        //if (ana.looper.getCurrentEventIndex() != 1){continue;} // do only this event
         if (not goodEvent())
             continue;
 

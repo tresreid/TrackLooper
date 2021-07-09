@@ -3107,6 +3107,11 @@ __device__ void scoreT5(struct SDL::modules& modulesInGPU, struct SDL::hits& hit
         }
         float slope_barrel = (z2-z1)/(r2-r1);
         float slope_endcap = (r2-r1)/(z2-z1);
+        float intercept = z1 - slope_barrel*r1;
+        float intercept_b = r1 - slope_endcap*z1;
+        float phi = atan(slope_barrel);
+        float phi_b = atan(slope_endcap);
+        //printf("%f\n",phi);
 
         //printf("types %d %d %d %d\n",type1,type2,type3,type4);
         //printf("types %u %u %u %u\n",mod1,mod2,mod3,mod4);
@@ -3160,6 +3165,9 @@ __device__ void scoreT5(struct SDL::modules& modulesInGPU, struct SDL::hits& hit
         float score7 = 0;
         float score8 = 0;
         float score9 = 0;
+        float inv = 1/ sqrt(slope2*slope2 +1);
+        float inv_barrel = 1/ sqrt(slope_barrel*slope_barrel +1);
+        float inv_endcap = 1/ sqrt(slope_endcap*slope_endcap +1);
         for( int i=0; i <10; i++){
           float z = hitsInGPU.zs[hits1[i]];
           float r = hitsInGPU.rts[hits1[i]]; // cm
@@ -3169,37 +3177,82 @@ __device__ void scoreT5(struct SDL::modules& modulesInGPU, struct SDL::hits& hit
           float etax = hitsInGPU.etas[hits1[i]];
           float phix = hitsInGPU.phis[hits1[i]];
           //printf("%f %f %f %f %f\n",etax, hitsInGPU.rts[hits1[i]],hitsInGPU.zs[hits1[i]],slope,drdz);
-          float var;
-          if((subdet == 5) && (slope != 0.0)){// 5== barrel, ask for no tilt
-          var = (slope_barrel*(r-r1) - (z-z1));
+          float var=0;
+          float var_bar=0;
+          float var_end=0;
+          float var_end_prev=0;
+          float var1 = (slope_barrel*(r-r1) - (z-z1));
+          float var_line=0;
+          float angle=0;
+          //var_line = abs(slope_barrel*(r-r1) - (z-z1))* inv_barrel;
+          //var_line = abs(slope_barrel*(r) - (z) + intercept)* inv_barrel;
+          if(subdet == 5) {// 5== barrel, ask for no tilt
+            var = slope_barrel*(r-r1) - (z-z1);
+            var_bar = slope_barrel*(r-r1) - (z-z1);
+            //var_line = abs(slope_barrel*(r-r1) - (z-z1))* inv_barrel;
+          var_line = abs(slope_barrel*(r) - (z) + intercept)* inv_barrel;
+          angle = atan(drdz);
           }else{
-          var = (slope_endcap*(z-z1) - (r-r1));
+            var = slope_endcap*(z-z1) - (r-r1);
+            var_end = slope_endcap*(z-z1) - (r-r1);
+            var_end_prev = slope_barrel*(r-r1) - (z-z1);
+
+          var_line = abs(slope_endcap*(z) - (r) + intercept_b)* inv_endcap;
+            //phi=M_PI/2;
+           // var_line = abs(slope_endcap*(z-z1) - (r-r1))* inv_endcap;
+           angle =0; 
+           phi = phi_b;
           }
+
+          //float var_line = abs(slope2*(r-r1) - (z-z1))* inv;
+
           //float novar = abs(slope*(r-r1) +z1);
-          float var2 = (slope2*(r)+b) - z;
-          float var3 = (slope3*(r)+b1) - z;
-          float var4 = (slope4*(r)+b2) - z;
+          //float var2 = (slope2*(r)+b) - z;
+          //float var3 = (slope3*(r)+b1) - z;
+          //float var4 = (slope4*(r)+b2) - z;
           //float novar3 = abs(slope3*(r)+b1);
           float err2;
+          float err3;
           if(modulesInGPU.moduleLayerType[hitsInGPU.moduleIndices[hits1[i]]]==0){
-            err2 =0.0225;//(1.5mm)^2
-          }else{ err2 =25;}//(5cm)^2
-          score += (var*var)/(err2);
-          score2 += abs(var);
-          score3 += (var2*var2)/(err2);
+            err2 =0.0225;err3=0.15;//(1.5mm)^2
+          }else{ err2 =25.;err3=5.0;}//(5cm)^2
+          //float angle = atan(drdz);
+          float newerr;
+          float newerr2;
+          float lineerr =err3*cos(abs(phi)-abs(angle));
+          if (drdz != 0.0){
+          newerr = err3*cos(angle);
+          newerr2 =err3*sin(angle);
+          //newerr = err3*cos(angle) + 0.01*sin(angle);
+          }else{ newerr=err3;newerr2=err3;}
+          //printf("%f %f %f %f %f %f %f\n",etax, hitsInGPU.rts[hits1[i]],hitsInGPU.zs[hits1[i]],slope,drdz,angle,newerr);
+          score += (var1*var1)/(err2);// before any change/ all residual in z
+          score2 += (var*var)/(err2);// after endcap change/ residual in z or r
+          score3 += (var_bar*var_bar)/(err2);// barrel score
+          score4 += (var_end*var_end)/(err2);// endcap score
+          score5 += (var_end_prev*var_end_prev)/(err2);// endcap before change score
+          score6 += (var*var)/(newerr);// after endcap change/ residual in z or r
+          score7 += (var*var)/(newerr2);// after endcap change/ residual in z or r
+          score8 += (var_line*var_line)/(lineerr*lineerr);
+          
+          //score5 += (var*var)/(newerr*newerr);// cos
+          //score6 += (var*var)/(newerr2*newerr2);//sin
+          //score2 += abs(var);
+          //score3 += (var2*var2)/(err2);
           //score2 += (var*var)/(err2+novar);
           //score4 += (var*var)/(novar);
-          score4 += abs(var2);
+          //score4 += abs(var2);
           //score6 += (var3*var3)/(err2+novar3);
-          score5 += (var3*var3)/(err2);
+          //score5 += (var3*var3)/(err2);
           //score8 += (var3*var3)/(novar3);
-          score6 += abs(var3);
-          score7 += (var4*var4)/(err2);
-          score8 += abs(var4);
+          //score6 += abs(var3);
+          //score7 += (var4*var4)/(err2);
+          //score8 += abs(var4);
+          //score9 += (var1*var1)/(err2);
      //     printf("%f %f %f %f\n",var*var,var2*var2,var3*var3,(var3*var3)/(err2));
         }
-       // printf("T5 score: %f %f %f %f %f %f %f %f %f\n",score,score2,score3,score4,score5,score6,score7,score8,score9);
-       scores[0] = slope3;
+        //printf("T5 score: %f %f %f %f %f %f %f %f %f\n",score,score2,score3,score4,score5,score6,score7,score8,score9);
+       scores[0] = slope_barrel;
        scores[1] = score;
        scores[2] = score2;
        scores[3] = score3;
@@ -3213,7 +3266,7 @@ __device__ void scoreT5(struct SDL::modules& modulesInGPU, struct SDL::hits& hit
       scores[11] = p2;
        //return {score,score2,slope};
 }
-__device__ bool inline checkHitsT5(unsigned int ix, unsigned int jx,struct SDL::miniDoublets& mdsInGPU, struct SDL::segments& segmentsInGPU, struct SDL::triplets& tripletsInGPU,struct SDL::quintuplets& quintupletsInGPU){
+__device__ int inline checkHitsT5(unsigned int ix, unsigned int jx,struct SDL::miniDoublets& mdsInGPU, struct SDL::segments& segmentsInGPU, struct SDL::triplets& tripletsInGPU,struct SDL::quintuplets& quintupletsInGPU){
 //        printf("checking hits\n");
          int hits1[10] = {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
          int hits2[10] = {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
@@ -3254,9 +3307,9 @@ __device__ bool inline checkHitsT5(unsigned int ix, unsigned int jx,struct SDL::
           }
           if(matched){nMatched++;}
         }
-
-        if(nMatched >= 6){return true;}
-        return false;
+        return nMatched;
+        //if(nMatched >= 7){return true;}
+        //return false;
 }
 __device__ bool inline checkHitsTC(unsigned int itrackCandidateIndex, unsigned int jtrackCandidateIndex,struct SDL::miniDoublets& mdsInGPU, struct SDL::segments& segmentsInGPU, struct SDL::triplets& tripletsInGPU,struct SDL::quintuplets& quintupletsInGPU, struct SDL::pixelTracklets& pixelTrackletsInGPU, struct SDL::pixelTriplets& pixelTripletsInGPU,struct SDL::trackCandidates& trackCandidatesInGPU){
 //        printf("checking hits\n");
@@ -3360,7 +3413,7 @@ __global__ void removeDupTrackCandidates(struct SDL::trackCandidates& trackCandi
       for(unsigned int ix1=blockIdx.y*blockDim.y+threadIdx.y; ix1<trackCandidatesInGPU.nTrackCandidates[lowmod1]; ix1+=blockDim.y*gridDim.y){
         bool isDup = false;
         unsigned int ix = modulesInGPU.trackCandidateModuleIndices[lowmod1] + ix1;
-        if(trackCandidatesInGPU.isDup[ix]){continue;}
+        //if(trackCandidatesInGPU.isDup[ix]){continue;}
         float eta1 = trackCandidatesInGPU.eta[ix];
         float phi1 = trackCandidatesInGPU.phi[ix];
         float pt1 = trackCandidatesInGPU.pt[ix];
@@ -3369,39 +3422,53 @@ __global__ void removeDupTrackCandidates(struct SDL::trackCandidates& trackCandi
         for(unsigned int lowmod=0; lowmod<=*modulesInGPU.nLowerModules;lowmod++){
           for(unsigned int jx1=0; jx1<trackCandidatesInGPU.nTrackCandidates[lowmod]; jx1++){
             unsigned int jx = modulesInGPU.trackCandidateModuleIndices[lowmod] + jx1;
-            if(ix>=jx){continue;}
-            if(trackCandidatesInGPU.isDup[jx]){continue;}
-            if(type1 == trackCandidatesInGPU.trackCandidateType[jx]){continue;}
+            if(ix==jx){continue;}
+            //if(trackCandidatesInGPU.isDup[jx]){continue;}
+            //if(type1 == trackCandidatesInGPU.trackCandidateType[jx]){continue;}
             float pt2 = trackCandidatesInGPU.pt[jx];
-            if(abs(1./pt1 - 1./pt2) > 0.5){continue;}
+            //if(abs(1./pt1 - 1./pt2) > 0.5){continue;}
             float eta2 = trackCandidatesInGPU.eta[jx];
             float phi2 = trackCandidatesInGPU.phi[jx];
             float dEta = abs(eta1-eta2);
             float dPhi = abs(phi1-phi2);
             if(dPhi > M_PI){dPhi = dPhi - 2*M_PI;}
-            if (abs(eta1-eta2) > 0.08){continue;}
-            if (abs(phi1-phi2) > 0.08){continue;}
+            if(dPhi < -M_PI){dPhi = dPhi + 2*M_PI;}
+            //if (abs(eta1-eta2) > 0.08){continue;}
+            //if (abs(phi1-phi2) > 0.08){continue;}
             float dR2 = dEta*dEta + dPhi*dPhi; 
-            if(dR2 == 0){
-            //if(dR2 < .0000005){
-              isDup=true;//break;
-              //if(trackCandidatesInGPU.trackCandidateType[ix] > trackCandidatesInGPU.trackCandidateType[jx]){
-                rmTrackCandidateToMemory(trackCandidatesInGPU,jx);dup_count++;
-              //}
-              //else{rmTrackCandidateToMemory(trackCandidatesInGPU,ix);dup_count++;}
-              break;
-            }
-            if(true){
-            //if(checkHitsTC(ix,jx,mdsInGPU,segmentsInGPU,tripletsInGPU,quintupletsInGPU, pixelTrackletsInGPU, pixelTripletsInGPU,trackCandidatesInGPU)){
-              isDup=true;
-              //if(trackCandidatesInGPU.trackCandidateType[ix] < trackCandidatesInGPU.trackCandidateType[jx]){
-                rmTrackCandidateToMemory(trackCandidatesInGPU,jx);dup_count++;
-              //}
-              //else{rmTrackCandidateToMemory(trackCandidatesInGPU,ix);dup_count++;}
-              break;
-            }
+          //if((dR2 < 0.2)){// && (abs(trackCandidatesInGPU.slope[ix] - trackCandidatesInGPU.slope[jx]) < 0.05)){
+          if((abs(trackCandidatesInGPU.slope[ix] - trackCandidatesInGPU.slope[jx]) < 0.05)){
+          //if((dR2 < 0.02) && (abs(trackCandidatesInGPU.slope[ix] - trackCandidatesInGPU.slope[jx]) < 0.05)){
+        //if(dR2 < 0.02){
+          dup_count++;
+          if( trackCandidatesInGPU.score[ix] < trackCandidatesInGPU.score[jx]){
+             rmTrackCandidateToMemory(trackCandidatesInGPU,jx);
           }
-          if(isDup){break;}
+          else{
+             rmTrackCandidateToMemory(trackCandidatesInGPU,ix);
+          }
+          isDup=true;//break;
+        }
+            //if(dR2 == 0){
+            ////if(dR2 < .0000005){
+            //  isDup=true;//break;
+            //  //if(trackCandidatesInGPU.trackCandidateType[ix] > trackCandidatesInGPU.trackCandidateType[jx]){
+            //    rmTrackCandidateToMemory(trackCandidatesInGPU,jx);dup_count++;
+            //  //}
+            //  //else{rmTrackCandidateToMemory(trackCandidatesInGPU,ix);dup_count++;}
+            //  break;
+            //}
+            //if(true){
+            ////if(checkHitsTC(ix,jx,mdsInGPU,segmentsInGPU,tripletsInGPU,quintupletsInGPU, pixelTrackletsInGPU, pixelTripletsInGPU,trackCandidatesInGPU)){
+            //  isDup=true;
+            //  //if(trackCandidatesInGPU.trackCandidateType[ix] < trackCandidatesInGPU.trackCandidateType[jx]){
+            //    rmTrackCandidateToMemory(trackCandidatesInGPU,jx);dup_count++;
+            //  //}
+            //  //else{rmTrackCandidateToMemory(trackCandidatesInGPU,ix);dup_count++;}
+            //  break;
+            //}
+          }
+          //if(isDup){break;}
         }
         //if(isDup){
         //  if(trackCandidatesInGPU.trackCandidateType[ix] > trackCandidatesInGPU.trackCandidateType[jx]){
@@ -4039,12 +4106,14 @@ __global__ void addT5asTrackCandidateInGPU(struct SDL::modules& modulesInGPU,str
   float pt = quintupletsInGPU.pt[quintupletIndex];
   float eta = quintupletsInGPU.eta[quintupletIndex];
   float phi = quintupletsInGPU.phi[quintupletIndex];
+  float slope = quintupletsInGPU.slope[quintupletIndex];
+  float score = quintupletsInGPU.score6[quintupletIndex];
 //  if(checkDupTrackCandidates(trackCandidatesInGPU,pt,eta,phi)){return;} 
  
   unsigned int trackCandidateModuleIdx = atomicAdd(&trackCandidatesInGPU.nTrackCandidates[innerInnerInnerLowerModuleArrayIndex],1);
   atomicAdd(&trackCandidatesInGPU.nTrackCandidatesT5[innerInnerInnerLowerModuleArrayIndex],1);
   unsigned int trackCandidateIdx = modulesInGPU.trackCandidateModuleIndices[innerInnerInnerLowerModuleArrayIndex] + trackCandidateModuleIdx;
-  addTrackCandidateToMemory(trackCandidatesInGPU, 4/*track candidate type T5=4*/, quintupletIndex, quintupletIndex, trackCandidateIdx,pt,eta,phi);
+  addTrackCandidateToMemory(trackCandidatesInGPU, 4/*track candidate type T5=4*/, quintupletIndex, quintupletIndex, trackCandidateIdx,pt,eta,phi,slope,score);
 }
 
 __global__ void addpT2asTrackCandidateInGPU(struct SDL::modules& modulesInGPU,struct SDL::pixelTracklets& pixelTrackletsInGPU,struct SDL::trackCandidates& trackCandidatesInGPU)
@@ -4058,12 +4127,13 @@ __global__ void addpT2asTrackCandidateInGPU(struct SDL::modules& modulesInGPU,st
   float pt  = pixelTrackletsInGPU.pt[pixelTrackletIndex];
   float eta = pixelTrackletsInGPU.eta[pixelTrackletIndex];
   float phi = pixelTrackletsInGPU.phi[pixelTrackletIndex];
+  float slope = 0;
 //  if(checkDupTrackCandidates(trackCandidatesInGPU,pt,eta,phi)){return;} 
 
   unsigned int trackCandidateModuleIdx = atomicAdd(&trackCandidatesInGPU.nTrackCandidates[pixelLowerModuleArrayIndex],1);
   atomicAdd(trackCandidatesInGPU.nTrackCandidatespT2,1);
   unsigned int trackCandidateIdx = modulesInGPU.trackCandidateModuleIndices[pixelLowerModuleArrayIndex] + trackCandidateModuleIdx;
-  addTrackCandidateToMemory(trackCandidatesInGPU, 3/*track candidate type pT2=3*/, pixelTrackletIndex, pixelTrackletIndex, trackCandidateIdx,pt,eta,phi);
+  addTrackCandidateToMemory(trackCandidatesInGPU, 3/*track candidate type pT2=3*/, pixelTrackletIndex, pixelTrackletIndex, trackCandidateIdx,pt,eta,phi,slope,0);
 }
 
 __global__ void addpT3asTrackCandidateInGPU(struct SDL::modules& modulesInGPU, struct SDL::pixelTriplets& pixelTripletsInGPU, struct SDL::trackCandidates& trackCandidatesInGPU)
@@ -4077,11 +4147,12 @@ __global__ void addpT3asTrackCandidateInGPU(struct SDL::modules& modulesInGPU, s
   float pt  = pixelTripletsInGPU.pt[pixelTripletIndex];
   float eta = pixelTripletsInGPU.eta[pixelTripletIndex];
   float phi = pixelTripletsInGPU.phi[pixelTripletIndex];
+  float slope = 0;
 
   unsigned int trackCandidateModuleIdx = atomicAdd(&trackCandidatesInGPU.nTrackCandidates[pixelLowerModuleArrayIndex],1);
   atomicAdd(trackCandidatesInGPU.nTrackCandidatespT3,1);
   unsigned int trackCandidateIdx = modulesInGPU.trackCandidateModuleIndices[pixelLowerModuleArrayIndex] + trackCandidateModuleIdx;
-  addTrackCandidateToMemory(trackCandidatesInGPU, 5/*track candidate type pT3=5*/, pixelTripletIndex, pixelTripletIndex, trackCandidateIdx,pt,eta,phi);
+  addTrackCandidateToMemory(trackCandidatesInGPU, 5/*track candidate type pT3=5*/, pixelTripletIndex, pixelTripletIndex, trackCandidateIdx,pt,eta,phi,slope,0);
 
 }
 
@@ -4162,7 +4233,7 @@ __global__ void createPixelTrackCandidatesInGPU(struct SDL::modules& modulesInGP
 		  else
 		    {
 		      unsigned int trackCandidateIdx = modulesInGPU.trackCandidateModuleIndices[pixelLowerModuleArrayIndex] + trackCandidateModuleIdx;
-		      addTrackCandidateToMemory(trackCandidatesInGPU, 5/*trackCandidateType*/, pixelTrackletIndex, outerObjectIndex, trackCandidateIdx,0,0,0);
+		      addTrackCandidateToMemory(trackCandidatesInGPU, 5/*trackCandidateType*/, pixelTrackletIndex, outerObjectIndex, trackCandidateIdx,0,0,0,0,0);
                     }
 
                 }
@@ -4205,7 +4276,7 @@ __global__ void createPixelTrackCandidatesInGPU(struct SDL::modules& modulesInGP
 		  else
 		    {
 		      unsigned int trackCandidateIdx = modulesInGPU.trackCandidateModuleIndices[pixelLowerModuleArrayIndex] + trackCandidateModuleIdx;
-		      addTrackCandidateToMemory(trackCandidatesInGPU, 6/*trackCandidateType*/, pixelTrackletIndex, outerObjectIndex, trackCandidateIdx,0,0,0);
+		      addTrackCandidateToMemory(trackCandidatesInGPU, 6/*trackCandidateType*/, pixelTrackletIndex, outerObjectIndex, trackCandidateIdx,0,0,0,0,0);
                     }
 
                 }
@@ -4299,7 +4370,7 @@ __global__ void createPixelTrackCandidatesFromOuterInnerInnerLowerModule(struct 
                     else
                    {
                         unsigned int trackCandidateIdx = modulesInGPU.trackCandidateModuleIndices[pixelLowerModuleArrayIndex] + trackCandidateModuleIdx;
-                        addTrackCandidateToMemory(trackCandidatesInGPU, 5/*pT2-T4 trackCandidateType*/, pixelTrackletIndex, outerObjectIndex, trackCandidateIdx,0,0,0);
+                        addTrackCandidateToMemory(trackCandidatesInGPU, 5/*pT2-T4 trackCandidateType*/, pixelTrackletIndex, outerObjectIndex, trackCandidateIdx,0,0,0,0,0);
                     }
 
                 }
@@ -4342,7 +4413,7 @@ __global__ void createPixelTrackCandidatesFromOuterInnerInnerLowerModule(struct 
                     else
                    {
                         unsigned int trackCandidateIdx = modulesInGPU.trackCandidateModuleIndices[pixelLowerModuleArrayIndex] + trackCandidateModuleIdx;
-                        addTrackCandidateToMemory(trackCandidatesInGPU, 6/* pT2-T3 trackCandidateType*/, pixelTrackletIndex, outerObjectIndex, trackCandidateIdx,0,0,0);
+                        addTrackCandidateToMemory(trackCandidatesInGPU, 6/* pT2-T3 trackCandidateType*/, pixelTrackletIndex, outerObjectIndex, trackCandidateIdx,0,0,0,0,0);
                     }
 
                 }
@@ -4424,7 +4495,7 @@ __global__ void createTrackCandidatesInGPU(struct SDL::modules& modulesInGPU, st
 		  else
 		    {
 		      unsigned int trackCandidateIdx = modulesInGPU.trackCandidateModuleIndices[innerInnerInnerLowerModuleArrayIndex] + trackCandidateModuleIdx;
-		      addTrackCandidateToMemory(trackCandidatesInGPU, trackCandidateType, innerObjectIndex, outerObjectIndex, trackCandidateIdx,0,0,0);
+		      addTrackCandidateToMemory(trackCandidatesInGPU, trackCandidateType, innerObjectIndex, outerObjectIndex, trackCandidateIdx,0,0,0,0,0);
                     }
 
                 }
@@ -4468,7 +4539,7 @@ __global__ void createTrackCandidatesInGPU(struct SDL::modules& modulesInGPU, st
                     {
 		      unsigned int trackCandidateIdx = modulesInGPU.trackCandidateModuleIndices[innerInnerInnerLowerModuleArrayIndex] + trackCandidateModuleIdx;
 
-		      addTrackCandidateToMemory(trackCandidatesInGPU, trackCandidateType, innerObjectIndex, outerObjectIndex, trackCandidateIdx,0,0,0);
+		      addTrackCandidateToMemory(trackCandidatesInGPU, trackCandidateType, innerObjectIndex, outerObjectIndex, trackCandidateIdx,0,0,0,0,0);
                     }
                 }
             }
@@ -4507,7 +4578,7 @@ __global__ void createTrackCandidatesInGPU(struct SDL::modules& modulesInGPU, st
 		  else
                     {
 		      unsigned int trackCandidateIdx = modulesInGPU.trackCandidateModuleIndices[innerInnerInnerLowerModuleArrayIndex] + trackCandidateModuleIdx;
-		      addTrackCandidateToMemory(trackCandidatesInGPU, trackCandidateType, innerObjectIndex, outerObjectIndex, trackCandidateIdx,0,0,0);
+		      addTrackCandidateToMemory(trackCandidatesInGPU, trackCandidateType, innerObjectIndex, outerObjectIndex, trackCandidateIdx,0,0,0,0,0);
 
                     }
                 }
@@ -4596,7 +4667,7 @@ __global__ void createTrackCandidatesFromInnerInnerInnerLowerModule(struct SDL::
                     else
                    {
                         unsigned int trackCandidateIdx = modulesInGPU.trackCandidateModuleIndices[innerInnerInnerLowerModuleArrayIndex] + trackCandidateModuleIdx;
-                        addTrackCandidateToMemory(trackCandidatesInGPU, trackCandidateType, innerObjectIndex, outerObjectIndex, trackCandidateIdx,0,0,0);
+                        addTrackCandidateToMemory(trackCandidatesInGPU, trackCandidateType, innerObjectIndex, outerObjectIndex, trackCandidateIdx,0,0,0,0,0);
                     }
 
                 }
@@ -4639,7 +4710,7 @@ __global__ void createTrackCandidatesFromInnerInnerInnerLowerModule(struct SDL::
                     {
                         unsigned int trackCandidateIdx = modulesInGPU.trackCandidateModuleIndices[innerInnerInnerLowerModuleArrayIndex] + trackCandidateModuleIdx;
 
-                        addTrackCandidateToMemory(trackCandidatesInGPU, trackCandidateType, innerObjectIndex, outerObjectIndex, trackCandidateIdx,0,0,0);
+                        addTrackCandidateToMemory(trackCandidatesInGPU, trackCandidateType, innerObjectIndex, outerObjectIndex, trackCandidateIdx,0,0,0,0,0);
                     }
                 }
             }
@@ -4679,7 +4750,7 @@ __global__ void createTrackCandidatesFromInnerInnerInnerLowerModule(struct SDL::
                     else
                     {
                         unsigned int trackCandidateIdx = modulesInGPU.trackCandidateModuleIndices[innerInnerInnerLowerModuleArrayIndex] + trackCandidateModuleIdx;
-                        addTrackCandidateToMemory(trackCandidatesInGPU, trackCandidateType, innerObjectIndex, outerObjectIndex, trackCandidateIdx,0,0,0);
+                        addTrackCandidateToMemory(trackCandidatesInGPU, trackCandidateType, innerObjectIndex, outerObjectIndex, trackCandidateIdx,0,0,0,0,0);
 
                     }
                 }
@@ -4856,11 +4927,44 @@ __global__ void removeDupQuintupletsInGPU(struct SDL::modules& modulesInGPU, str
         float dEta = abs(eta1-eta2);
         float dPhi = abs(phi1-phi2);
         if(dPhi > M_PI){dPhi = dPhi - 2*M_PI;}
-        //if (dEta > 0.075){continue;}
-        //if (abs(dPhi) > 0.075){continue;}
+        if (dEta > 0.1){continue;}
+        if (abs(dPhi) > 0.1){continue;}
         float dR2 = dEta*dEta + dPhi*dPhi;
-        //if(dR2 == 0){
-        ////if(dR2 < 0.000001){
+        int nMatched = checkHitsT5(ix,jx,mdsInGPU,segmentsInGPU,tripletsInGPU,quintupletsInGPU);
+        if(nMatched ==10){
+          dup_count++;
+          if( quintupletsInGPU.score6[jx] - quintupletsInGPU.score6[ix] <= 0){
+            rmQuintupletToMemory(quintupletsInGPU,ix); // keept shorted track
+          }
+        }
+        if(nMatched ==9){
+          dup_count++;
+          if( quintupletsInGPU.score6[jx] - quintupletsInGPU.score6[ix] <= -0.01){
+            rmQuintupletToMemory(quintupletsInGPU,ix); // keept shorted track
+          }
+          //if( quintupletsInGPU.score6[ix] < quintupletsInGPU.score6[jx]){
+          //  rmQuintupletToMemory(quintupletsInGPU,jx); // keept shorted track
+          //}
+          //else{
+          //  rmQuintupletToMemory(quintupletsInGPU,ix);
+          //}
+          isDup=true;//break;
+        }
+        if(nMatched ==8){
+          dup_count++;
+          if( quintupletsInGPU.score6[jx] - quintupletsInGPU.score6[ix] <= -0.6){
+            rmQuintupletToMemory(quintupletsInGPU,ix); // keept shorted track
+          }
+        }
+        if(nMatched ==7){
+          dup_count++;
+          if( quintupletsInGPU.score6[jx] - quintupletsInGPU.score6[ix] <= -2){
+            rmQuintupletToMemory(quintupletsInGPU,ix); // keept shorted track
+          }
+        }
+        //if((dR2 == 0)){ 
+        //if((dR2 < 0.02) && (abs(quintupletsInGPU.slope[ix] - quintupletsInGPU.slope[jx]) < 0.05)){
+        ////if(dR2 < 0.02){
         //  dup_count++;
         //  if( quintupletsInGPU.score[ix] < quintupletsInGPU.score[jx]){
         //    rmQuintupletToMemory(quintupletsInGPU,jx); // keept shorted track
@@ -4868,18 +4972,8 @@ __global__ void removeDupQuintupletsInGPU(struct SDL::modules& modulesInGPU, str
         //  else{
         //    rmQuintupletToMemory(quintupletsInGPU,ix);
         //  }
-        //  isDup=true;break;
+        //  isDup=true;//break;
         //}
-        if(checkHitsT5(ix,jx,mdsInGPU,segmentsInGPU,tripletsInGPU,quintupletsInGPU)){
-          dup_count++;
-          if( quintupletsInGPU.score[ix] < quintupletsInGPU.score[jx]){
-            rmQuintupletToMemory(quintupletsInGPU,jx); // keept shorted track
-          }
-          else{
-            rmQuintupletToMemory(quintupletsInGPU,ix);
-          }
-          isDup=true;break;
-        }
       }
       //if(isDup){break;}
       }

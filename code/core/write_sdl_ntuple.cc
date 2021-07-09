@@ -1710,6 +1710,26 @@ void fillQuintupletOutputBranches(SDL::Event& event)
             t5_matched_simIdx.push_back(matched_sim_trk_idxs);
         }
     }
+    
+//    std::vector<int> kept_sim;
+//    for( int i =0; i < t5_matched_simIdx.size() ; i++){
+//      if(!t5_foundDuplicate.at(i)){
+//        std::vector<int> temp = t5_matched_simIdx.at(i);
+//        if(temp.size()==0){continue;}
+//        kept_sim.push_back(temp.at(0));
+//     //   kept_sim.push_back(0);
+//      }
+//    }
+//    for( int i =0; i < t5_matched_simIdx.size() ; i++){
+//        std::vector<int> temp = t5_matched_simIdx.at(i);
+//        if(temp.size()==0){continue;}
+//      int sim = temp.at(0);
+//      //printf("sim %d\n",sim);
+//      auto it = find(kept_sim.begin(), kept_sim.end(),sim);
+//      if(it == kept_sim.end()){
+//      printf("sim not found %d\n",sim);}
+//    }
+
 
     std::vector<int> t5_isDuplicate(t5_matched_simIdx.size());
 
